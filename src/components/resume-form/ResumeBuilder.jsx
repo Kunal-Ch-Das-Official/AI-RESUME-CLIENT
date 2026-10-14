@@ -3,14 +3,30 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
+  DndContext,
+  closestCenter,
+  MouseSensor,
+  TouchSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  horizontalListSortingStrategy,
+  useSortable,
+  arrayMove,
+  sortableKeyboardCoordinates,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+
+import {
   IconBriefcase,
   IconTrophy,
   IconCertificate,
   IconBook,
   IconCode,
   IconDeviceFloppy,
-  IconEye,
-  IconEdit,
   IconFolderCode,
   IconLayoutGrid,
   IconMinus,
@@ -47,11 +63,8 @@ import AdditionalTab from "./tabs/AdditionalTab";
 import CertificatesTab from "./tabs/CertificatesTab";
 import PublicationsTab from "./tabs/PublicationsTab";
 import AchievementsTab from "./tabs/AchievementsTab";
-import { buildResumeMultipartFormData } from "../utils/resumeUploadHelper";
-import signup from "@/helpers/signup";
-import login from "@/helpers/login";
 import PageLoader from "../utils/page-loader/PageLoader";
-import addResumeId from "@/helpers/addResumeId";
+import { savePendingResumeDraft } from "@/components/utils/resumeDraftStorage";
 
 const tabs = [
   ["Basics", IconUserCircle],
@@ -79,6 +92,56 @@ const PRIORITY_TAB_CONFIG = {
 const PRIORITY_TAB_NAMES = Object.keys(PRIORITY_TAB_CONFIG);
 const ACTIVE_TAB_STORAGE_KEY = "airesume-active-tab";
 
+/**
+ * Sortable Tab Item for Reorderable Priority Sections
+ */
+function SortableTabItem({ name, Icon, isActive, priority, onClick }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: name });
+
+  const style = {
+    transform: CSS.Translate.toString(transform),
+    transition,
+    zIndex: isDragging ? 30 : "auto",
+  };
+
+  return (
+    <button
+      ref={setNodeRef}
+      style={style}
+      type="button"
+      onClick={onClick}
+      title={`Priority ${priority} · Hold & drag to reorder this section`}
+      className={`flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors select-none cursor-grab active:cursor-grabbing ${
+        isActive
+          ? "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-100"
+          : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+      } ${
+        isDragging
+          ? "opacity-90 shadow-md ring-2 ring-indigo-400 bg-white scale-105"
+          : ""
+      }`}
+      {...attributes}
+      {...listeners}
+    >
+      <IconGripVertical
+        size={13}
+        className={`shrink-0 transition-opacity ${
+          isDragging ? "opacity-100 text-indigo-600" : "opacity-50"
+        }`}
+      />
+      <Icon size={14} />
+      {name}
+    </button>
+  );
+}
+
 export default function ResumeBuilder({
   initialTemplate = "clean-ats-optimizer",
   document_id = null,
@@ -97,15 +160,12 @@ export default function ResumeBuilder({
   const [activeTab, setActiveTab] = useState("Basics");
   const [activeTabHydrated, setActiveTabHydrated] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [mobileMode, setMobileMode] = useState("edit");
   const [zoom, setZoom] = useState(60);
   const [hydrated, setHydrated] = useState(false);
   const [pendingFiles, setPendingFiles] = useState({});
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [pendingRedirectUrl, setPendingRedirectUrl] = useState("");
   const [isProceeding, setIsProceeding] = useState(false);
-  const [userId, setUserId] = useState(null);
-  const [resumeId, setResumeId] = useState(null);
 
   // Professional Alert Modal State
   const [alertModal, setAlertModal] = useState({
@@ -123,6 +183,24 @@ export default function ResumeBuilder({
     useResizablePane(650);
 
   const [resumeData, setResumeData] = useState(null);
+
+  // Configure @dnd-kit sensors for Mouse, Touch (with 200ms hold delay), and Keyboard
+  const sensors = useSensors(
+    useSensor(MouseSensor, {
+      activationConstraint: {
+        distance: 6, // 6px movement required before drag starts so normal clicks work
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 200, // Press & hold 200ms on mobile/tablet so horizontal swipe scrolling still works
+        tolerance: 5,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  );
 
   useEffect(() => {
     if (!document_id) {
@@ -284,33 +362,18 @@ export default function ResumeBuilder({
       .map(({ name }) => tabs.find(([tabName]) => tabName === name));
   }, [resume]);
 
-  const handleSectionTabDragStart = (event, name) => {
-    event.dataTransfer.effectAllowed = "move";
-    event.dataTransfer.setData("text/plain", name);
-  };
-
-  const handleSectionTabDrop = (event, targetName) => {
-    event.preventDefault();
-
-    const sourceName = event.dataTransfer.getData("text/plain");
-    if (
-      !sourceName ||
-      sourceName === targetName ||
-      !PRIORITY_TAB_CONFIG[sourceName] ||
-      !PRIORITY_TAB_CONFIG[targetName]
-    ) {
-      return;
-    }
+  // Handle drag end for both Mouse and Touch via @dnd-kit
+  const handleDragEnd = (event) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
 
     const currentOrder = orderedPriorityTabs.map(([name]) => name);
-    const sourceIndex = currentOrder.indexOf(sourceName);
-    const targetIndex = currentOrder.indexOf(targetName);
+    const oldIndex = currentOrder.indexOf(active.id);
+    const newIndex = currentOrder.indexOf(over.id);
 
-    if (sourceIndex < 0 || targetIndex < 0) return;
+    if (oldIndex < 0 || newIndex < 0) return;
 
-    const nextOrder = [...currentOrder];
-    const [moved] = nextOrder.splice(sourceIndex, 1);
-    nextOrder.splice(targetIndex, 0, moved);
+    const nextOrder = arrayMove(currentOrder, oldIndex, newIndex);
 
     setResume((current) => {
       const next = cloneResume(current);
@@ -327,61 +390,63 @@ export default function ResumeBuilder({
     });
   };
 
-  const handleSectionTabDragOver = (event) => {
-    event.preventDefault();
-    event.dataTransfer.dropEffect = "move";
-  };
+  const renderStaticTab = ([name, Icon]) => (
+    <button
+      key={name}
+      type="button"
+      onClick={() => setActiveTab(name)}
+      className={`flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+        activeTab === name
+          ? "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-100"
+          : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+      }`}
+    >
+      <Icon size={14} />
+      {name}
+    </button>
+  );
 
-  const renderTabs = () => {
-    const orderedTabs = [
-      tabs.find(([name]) => name === "Basics"),
-      ...orderedPriorityTabs,
-      tabs.find(([name]) => name === "Additional"),
-      tabs.find(([name]) => name === "More"),
-    ].filter(Boolean);
+  const renderTabs = (contextId) => {
+    const basicsTab = tabs.find(([name]) => name === "Basics");
+    const additionalTab = tabs.find(([name]) => name === "Additional");
+    const moreTab = tabs.find(([name]) => name === "More");
+    const priorityIds = orderedPriorityTabs.map(([name]) => name);
 
-    return orderedTabs.map(([name, Icon]) => {
-      const isReorderable = Boolean(PRIORITY_TAB_CONFIG[name]);
-      const priority = isReorderable
-        ? getSectionPriority(name, PRIORITY_TAB_NAMES.indexOf(name))
-        : null;
+    return (
+      <DndContext
+        id={contextId}
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        {basicsTab && renderStaticTab(basicsTab)}
 
-      return (
-        <button
-          key={name}
-          type="button"
-          draggable={isReorderable}
-          onDragStart={
-            isReorderable
-              ? (event) => handleSectionTabDragStart(event, name)
-              : undefined
-          }
-          onDrop={
-            isReorderable
-              ? (event) => handleSectionTabDrop(event, name)
-              : undefined
-          }
-          onDragOver={isReorderable ? handleSectionTabDragOver : undefined}
-          className={`flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
-            activeTab === name
-              ? "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-100"
-              : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
-          } ${isReorderable ? "cursor-grab active:cursor-grabbing" : ""}`}
-          onClick={() => setActiveTab(name)}
-          title={
-            isReorderable
-              ? `Priority ${priority} · Drag to reorder this resume section`
-              : undefined
-          }
+        <SortableContext
+          items={priorityIds}
+          strategy={horizontalListSortingStrategy}
         >
-          {isReorderable && (
-            <IconGripVertical size={13} className="shrink-0 opacity-50" />
-          )}
-          <Icon size={14} />
-          {name}
-        </button>
-      );
-    });
+          {orderedPriorityTabs.map(([name, Icon]) => {
+            const priority = getSectionPriority(
+              name,
+              PRIORITY_TAB_NAMES.indexOf(name),
+            );
+            return (
+              <SortableTabItem
+                key={name}
+                name={name}
+                Icon={Icon}
+                isActive={activeTab === name}
+                priority={priority}
+                onClick={() => setActiveTab(name)}
+              />
+            );
+          })}
+        </SortableContext>
+
+        {additionalTab && renderStaticTab(additionalTab)}
+        {moreTab && renderStaticTab(moreTab)}
+      </DndContext>
+    );
   };
 
   const saveDraft = () => {
@@ -402,171 +467,40 @@ export default function ResumeBuilder({
     setPendingFiles({});
   };
 
-
-  //! ==================== Handle Pre Process  =======================
+  //! ==================== Stage Resume Only (no upload, no authentication) =======================
   const handlePreProcessingResume = async () => {
     try {
       setIsProceeding(true);
-      const formData = buildResumeMultipartFormData(resume, pendingFiles);
 
-      const response = await fetch(
-        process.env.NEXT_PUBLIC_RESUME_DATA_UPLOAD_TO_DB_URL,
-        {
-          method: "POST",
-          body: formData,
-        },
-      );
+      const targetTemplate = TEMPLATE_DEFINITIONS.some(
+        (item) => item.id === resume?.templateName,
+      )
+        ? resume.templateName
+        : validInitial;
+      const targetUrl = `/print-resume/draft?template=${encodeURIComponent(targetTemplate)}`;
 
-      const contentType = response.headers.get("content-type");
-      let result = null;
-
-      if (contentType && contentType.includes("application/json")) {
-        result = await response.json();
-      } else {
-        const textError = await response.text();
-        throw new Error(
-          `Server Error (${response.status}): ${textError || response.statusText}`,
-        );
-      }
-
-      if (!response.ok) {
-        const validationMessage = Array.isArray(result?.details)
-          ? result.details
-              .map((detail) => {
-                if (typeof detail === "string") return detail;
-                const path = Array.isArray(detail?.path)
-                  ? detail.path.join(".")
-                  : detail?.path || "request";
-                return `${path}: ${detail?.message || "Validation failed"}`;
-              })
-              .join("\n")
-          : result?.details
-            ? String(result.details)
-            : null;
-
-        throw new Error({
-          message:
-            result?.message ||
-            result?.error ||
-            validationMessage ||
-            `Failed to upload resume (Status: ${response.status}).`,
-          details: result?.details,
-        });
-      }
-
-      const emailId = result.data?.contactInfo?.primaryEmail;
-      const fullName = result.data?.basicInfo?.fullName;
-
-      if (!emailId || typeof emailId !== "string" || !emailId.includes("@")) {
-        throw new Error(
-          "A valid primary email address is required in your resume contact details to proceed.",
-        );
-      }
-
-      const safeFullName =
-        typeof fullName === "string" && fullName.trim()
-          ? fullName.trim()
-          : "Candidate";
-      const today = new Date();
-
-      const document_id = result.data?._id || result.data?.id;
-
-      if (!document_id) {
-        throw new Error(
-          "Resume was created, but document ID was not returned.",
-        );
-      }
-
-      const targetUrl = `/print-resume/${document_id}?template=${validInitial}`;
-      setResumeId(document_id);
-
-      // ==========================================
-      // AUTH CHECK & SESSION VALIDATION
-      // ==========================================
-      let currentUserId = null;
-
-      try {
-        const authRes = await fetch(process.env.NEXT_PUBLIC_LOGGEDIN_USER, {
-          method: "GET",
-          credentials: "include",
-          headers: { Accept: "application/json" },
-          cache: "no-store",
-        });
-
-        if (authRes.ok) {
-          const authData = await authRes.json();
-          if (
-            authData &&
-            (authData.userName || authData.userEmail || authData.id)
-          ) {
-            currentUserId = authData.id;
-            setUserId(currentUserId);
-          }
-        }
-      } catch (err) {
-        console.warn("Session check query skipped or failed:", err);
-      }
-
-      // If user is not logged in, attempt seamless automated signup
-      if (!currentUserId) {
-        try {
-          const convenientSignup = await signup(emailId, safeFullName, today);
-
-          if (convenientSignup) {
-            const credentials =
-              convenientSignup.data?.credentials || convenientSignup.credentials;
-            if (credentials) {
-              currentUserId = credentials.id;
-              setUserId(currentUserId);
-              await login(credentials.emailId, credentials.rawPassword);
-            }
-          }
-        } catch (signupError) {
-          const errMessage = (signupError.message || "").toLowerCase();
-          if (
-            errMessage.includes("already exists") ||
-            errMessage.includes("unprocessable") ||
-            errMessage.includes("duplicate")
-          ) {
-            setPendingRedirectUrl(targetUrl);
-            setShowLoginModal(true);
-            return;
-          } else {
-            throw signupError;
-          }
-        }
-      }
-
-      // ==========================================
-      // ATTACH RESUME ID TO USER PROFILE
-      // ==========================================
-      if (currentUserId && document_id) {
-        try {
-          const addResumeRef = await addResumeId(document_id, currentUserId);
-
-          if (addResumeRef && !addResumeRef.data && addResumeRef.message) {
-            console.warn("Resume reference warning:", addResumeRef.message);
-          }
-        } catch (refError) {
-          console.error("Failed to link resume ID to user profile:", refError);
-        }
-      }
+      // Proceed only stages the current draft locally. It must not upload or authenticate.
+      await savePendingResumeDraft({
+        resume: { ...resume, templateName: targetTemplate },
+        pendingFiles,
+        templateName: targetTemplate,
+        createdAt: new Date().toISOString(),
+        savedResumeId: null,
+      });
 
       window.location.href = targetUrl;
-
     } catch (error) {
-      console.error("Resume upload error:", error);
+      console.error("Resume draft staging error:", error);
       showAlert(
-        "Upload Error",
-        error.message ||
-          "An unexpected error occurred while processing your resume.",
-        error.details ||
-          "Please check the form and try again. There may be required field missing.",
+        "Unable to Continue",
+        error?.message || "Unable to prepare your resume preview.",
+        "Your resume was not uploaded. Please try again.",
       );
     } finally {
       setIsProceeding(false);
     }
   };
+
   const currentTemplate = useMemo(
     () =>
       TEMPLATE_DEFINITIONS.find((item) => item.id === resume.templateName) ||
@@ -577,6 +511,7 @@ export default function ResumeBuilder({
   if (isProceeding) {
     return <PageLoader />;
   }
+
   return (
     <>
       <div className="no-print min-h-screen bg-slate-100/60 pb-12 lg:pb-0">
@@ -593,23 +528,6 @@ export default function ResumeBuilder({
             </div>
 
             <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-              <button
-                type="button"
-                className="inline-flex items-center gap-1 rounded-lg border border-indigo-200 bg-indigo-50 px-2.5 py-1.5 text-xs font-semibold text-indigo-700 shadow-sm lg:hidden"
-                onClick={() =>
-                  setMobileMode((m) => (m === "edit" ? "preview" : "edit"))
-                }
-              >
-                {mobileMode === "edit" ? (
-                  <>
-                    <IconEye size={14} /> Preview
-                  </>
-                ) : (
-                  <>
-                    <IconEdit size={14} /> Form
-                  </>
-                )}
-              </button>
 
               <button
                 type="button"
@@ -641,7 +559,9 @@ export default function ResumeBuilder({
               <button
                 type="button"
                 onClick={handlePreProcessingResume}
-                className="inline-flex items-center gap-1 rounded-lg bg-gradient-to-r from-indigo-600 to-violet-600 px-3 py-1.5 text-xs font-semibold text-white shadow-md shadow-indigo-500/20 active:scale-95"
+                className="inline-flex items-center gap-1 rounded-lg
+                bg-gradient-to-r from-indigo-600 to-violet-600 px-3 py-1.5
+                text-xs font-semibold text-white shadow-md shadow-indigo-500/20 active:scale-95"
               >
                 <IconPrinter size={14} />
                 <span className="hidden sm:inline">Proceed </span>
@@ -650,101 +570,18 @@ export default function ResumeBuilder({
           </div>
         </div>
 
-        {/* Mobile View */}
-        <div className="block lg:hidden w-full">
-          {mobileMode === "edit" ? (
-            <div className="bg-white p-3">
-              <div className="sticky top-[53px] z-20 flex gap-1 overflow-x-auto border-b border-slate-200 bg-white py-2 scroll-slim">
-                {renderTabs()}
-              </div>
-
-              <div className="mt-3">
-                {activeTab === "Basics" && (
-                  <BasicsTab
-                    resume={resume}
-                    update={update}
-                    setPendingFiles={setPendingFiles}
-                  />
-                )}
-                {activeTab === "Experience" && (
-                  <ExperienceTab
-                    resume={resume}
-                    setResume={setResume}
-                    update={update}
-                  />
-                )}
-                {activeTab === "Education" && (
-                  <EducationTab resume={resume} setResume={setResume} />
-                )}
-                {activeTab === "Skills" && (
-                  <SkillsTab
-                    resume={resume}
-                    setResume={setResume}
-                    update={update}
-                  />
-                )}
-                {activeTab === "Projects" && (
-                  <ProjectsTab resume={resume} setResume={setResume} />
-                )}
-                {activeTab === "Certificates" && (
-                  <CertificatesTab
-                    resume={resume}
-                    setResume={setResume}
-                    update={update}
-                    setPendingFiles={setPendingFiles}
-                  />
-                )}
-                {activeTab === "Publications" && (
-                  <PublicationsTab
-                    resume={resume}
-                    setResume={setResume}
-                    setPendingFiles={setPendingFiles}
-                  />
-                )}
-                {activeTab === "Achievements" && (
-                  <AchievementsTab
-                    resume={resume}
-                    setResume={setResume}
-                    setPendingFiles={setPendingFiles}
-                  />
-                )}
-                {activeTab === "Additional" && (
-                  <AdditionalTab
-                    resume={resume}
-                    setResume={setResume}
-                    update={update}
-                  />
-                )}
-                {activeTab === "More" && (
-                  <MoreTab
-                    resume={resume}
-                    update={update}
-                    setResume={setResume}
-                  />
-                )}
-              </div>
-            </div>
-          ) : (
-            <div className="p-3 bg-slate-200 min-h-screen overflow-x-auto flex justify-center">
-              <div className="min-w-[794px] bg-white shadow-xl origin-top transform scale-[0.45] sm:scale-[0.6]">
-                <ResumeRenderer resumeData={resume} />
-              </div>
-            </div>
-          )}
-        </div>
-
         {/* Desktop Split Workspace */}
         <div
           ref={editorRef}
-          className="hidden lg:flex w-full min-w-0 overflow-hidden"
+          className="flex w-full min-w-0 overflow-hidden"
           style={{ height: "calc(100vh - 54px)" }}
         >
           <aside
             className="border-r border-slate-200 bg-white shrink-0 overflow-hidden flex flex-col"
-            style={{ width: `${formWidth}px` }}
+            style={{ width: `min(${formWidth}px, 52vw)`, minWidth: "180px" }}
           >
             <div className="sticky top-0 z-10 flex gap-1 overflow-x-auto border-b border-slate-200 bg-white/95 px-3 py-2 backdrop-blur scroll-slim">
-              {renderTabs()}
+              {renderTabs("resume-tabs-desktop")}
             </div>
 
             <div
@@ -793,7 +630,6 @@ export default function ResumeBuilder({
                   setPendingFiles={setPendingFiles}
                 />
               )}
-
               {activeTab === "Achievements" && (
                 <AchievementsTab
                   resume={resume}
@@ -826,11 +662,16 @@ export default function ResumeBuilder({
               width: `${DIVIDER_HIT_WIDTH}px`,
               marginLeft: `-${DIVIDER_HIT_WIDTH / 2}px`,
               marginRight: `-${DIVIDER_HIT_WIDTH / 2}px`,
-              cursor: "col-resize",
+              cursor: isDragging ? "col-resize" : "col-resize",
               touchAction: "none",
+              userSelect: "none",
+              WebkitUserSelect: "none",
             }}
-            onMouseDown={startDragging}
+            onPointerDown={startDragging}
             role="separator"
+            aria-label="Resize form and resume preview panels"
+            aria-orientation="vertical"
+            tabIndex={0}
           >
             <div
               className="absolute inset-0 z-[101]"
@@ -886,7 +727,7 @@ export default function ResumeBuilder({
             </div>
 
             <div
-              className="scroll-slim overflow-auto bg-gradient-to-br from-slate-100 to-slate-200/50 p-6 flex-1"
+              className="scroll-slim overflow-auto bg-gradient-to-br from-slate-100 to-slate-200/50 p-2 sm:p-4 lg:p-6 flex-1"
               style={{ height: "calc(100vh - 54px - 45px)" }}
             >
               <div
@@ -1130,8 +971,8 @@ export default function ResumeBuilder({
                     color: "#475569",
                   }}
                 >
-                  Please login first, otherwise your data will be lost when you
-                  proceed further.
+                  Please log in to continue. Your resume draft has been saved
+                  temporarily and will not be uploaded until you choose Print / PDF.
                 </p>
               </div>
             </div>
@@ -1149,26 +990,8 @@ export default function ResumeBuilder({
                 onClick={() => {
                   setShowLoginModal(false);
                   if (pendingRedirectUrl) {
-                    window.location.href = pendingRedirectUrl;
+                    window.sessionStorage.setItem("airesume-auth-return-to", pendingRedirectUrl);
                   }
-                }}
-                style={{
-                  borderRadius: "12px",
-                  backgroundColor: "#f1f5f9",
-                  border: "none",
-                  color: "#475569",
-                  padding: "10px 16px",
-                  fontSize: "12px",
-                  fontWeight: "600",
-                  cursor: "pointer",
-                }}
-              >
-                Proceed Anyway
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowLoginModal(false);
                   window.location.href = "/sign-in";
                 }}
                 style={{

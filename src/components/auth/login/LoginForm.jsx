@@ -45,6 +45,13 @@ export default function LoginForm({ userId, token }) {
         );
       }
 
+      const returnTo = window.sessionStorage.getItem("airesume-auth-return-to");
+      if (returnTo && returnTo.startsWith("/")) {
+        window.sessionStorage.removeItem("airesume-auth-return-to");
+        router.replace(returnTo);
+        return;
+      }
+
       setSuccessModal(true);
     } catch (err) {
       setError(err.message);

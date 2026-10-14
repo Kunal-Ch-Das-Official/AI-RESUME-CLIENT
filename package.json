@@ -2,7 +2,12 @@
   "name": "ai-resume",
   "version": "2.0.0",
   "private": true,
-  "keywords": ["Free Resume", "AI Resume", "ATS Resume", "Resume Maker"],
+  "keywords": [
+    "Free Resume",
+    "AI Resume",
+    "ATS Resume",
+    "Resume Maker"
+  ],
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -12,6 +17,9 @@
     "login": "npx wrangler login"
   },
   "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
     "@opennextjs/cloudflare": "^1.20.9",
     "@radix-ui/react-slot": "^1.4.0",
     "@tabler/icons-react": "^3.48.0",
