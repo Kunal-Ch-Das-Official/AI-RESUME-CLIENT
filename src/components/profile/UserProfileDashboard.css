@@ -1,0 +1,1289 @@
+/* Account settings design system */
+:root {
+  --background: oklch(0.985 0.003 286);
+  --foreground: oklch(0.245 0.008 286);
+  --card: oklch(1 0 0);
+  --card-foreground: var(--foreground);
+  --primary: oklch(0.541 0.281 293.009);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.943 0.029 294.588);
+  --secondary-foreground: var(--primary);
+  --muted: oklch(0.971 0.003 286);
+  --muted-foreground: oklch(0.54 0.012 286);
+  --accent: var(--secondary);
+  --accent-foreground: var(--primary);
+  --border: oklch(0.925 0.005 286);
+  --input: var(--border);
+  --ring: var(--primary);
+  --success: oklch(0.54 0.12 162);
+  --success-soft: oklch(0.965 0.02 162);
+  --danger-soft: oklch(0.97 0.013 20);
+  --danger: oklch(0.53 0.2 25);
+  --radius: 0.5rem;
+  --font-body: "Figtree", sans-serif;
+  --font-heading: "Outfit", sans-serif;
+}
+@theme inline {
+  --font-sans: var(--font-body);
+  --font-display: var(--font-heading);
+}
+body {
+  font-family: var(--font-body);
+  letter-spacing: 0;
+}
+.account-page {
+  min-height: 100vh;
+  background: var(--background);
+  color: var(--foreground);
+}
+.account-page * {
+  box-sizing: border-box;
+  letter-spacing: 0;
+}
+.account-shell {
+  max-width: 1200px;
+  padding: 40px 40px 24px;
+  margin: auto;
+}
+.account-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  margin-bottom: 31px;
+}
+.account-breadcrumb span:last-child {
+  color: var(--foreground);
+}
+.account-identity {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding-bottom: 34px;
+  border-bottom: 1px solid var(--border);
+}
+.identity-person {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  min-width: 0;
+}
+.account-avatar {
+  width: 76px;
+  height: 76px;
+  flex-shrink: 0;
+  position: relative;
+  display: grid;
+  place-items: center;
+  background: var(--secondary);
+  color: var(--primary);
+  border-radius: 18px;
+  font-family: var(--font-heading);
+  font-size: 27px;
+  font-weight: 500;
+}
+.avatar-status {
+  position: absolute;
+  width: 15px;
+  height: 15px;
+  bottom: 0;
+  right: -2px;
+  border: 3px solid var(--background);
+  border-radius: 50%;
+  background: var(--success);
+}
+.identity-copy {
+  min-width: 0;
+}
+.identity-title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 13px;
+}
+.identity-title h1 {
+  font: 500 29px/1.25 var(--font-heading);
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.premium-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--secondary);
+  color: var(--primary);
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 5px;
+  padding: 5px 8px;
+}
+.identity-copy p {
+  margin: 7px 0 4px;
+  font-size: 13px;
+  color: var(--muted-foreground);
+  overflow-wrap: anywhere;
+}
+.identity-email {
+  font-size: 12px;
+  color: var(--muted-foreground);
+  overflow-wrap: anywhere;
+}
+.logout-button {
+  color: var(--muted-foreground);
+  background: var(--card);
+  box-shadow: none;
+  height: 38px;
+  padding: 0 14px;
+  flex-shrink: 0;
+}
+.logout-button:hover {
+  background: rgb(255, 0, 85);
+  color: white;
+  font-size: large;
+  font: bold;
+}
+.account-workspace {
+  display: grid;
+  grid-template-columns: 246px minmax(0, 1fr);
+  gap: 40px;
+  margin-top: 36px;
+}
+.section-eyebrow {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--muted-foreground);
+  margin: 0 0 17px;
+}
+.account-sidebar > .section-eyebrow {
+  padding-left: 13px;
+  margin-top: 9px;
+}
+.account-sidebar nav {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.account-nav {
+  height: 68px;
+  width: 100%;
+  justify-content: flex-start;
+  padding: 12px 13px;
+  gap: 13px;
+  color: var(--muted-foreground);
+  font-weight: 400;
+  border-radius: 7px;
+  white-space: normal;
+}
+.account-nav > svg {
+  width: 20px;
+  height: 20px;
+}
+.account-nav span {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+}
+.account-nav strong {
+  display: block;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--foreground);
+}
+.account-nav small {
+  display: block;
+  margin-top: 5px;
+  font-size: 11px;
+  color: var(--muted-foreground);
+}
+.account-nav.is-active {
+  background: var(--secondary);
+  color: var(--primary);
+}
+.account-nav.is-active strong {
+  color: var(--primary);
+}
+.account-nav.is-active small {
+  color: var(--primary);
+  opacity: 0.7;
+}
+.account-nav .nav-chevron {
+  width: 14px;
+  height: 14px;
+  opacity: 0;
+}
+.account-nav.is-active .nav-chevron {
+  opacity: 1;
+}
+.sidebar-security {
+  margin: 31px 12px 0;
+  padding-top: 23px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.security-symbol {
+  color: var(--success);
+  padding-top: 2px;
+}
+.sidebar-security strong {
+  font-size: 12px;
+  font-weight: 600;
+}
+.sidebar-security p {
+  color: var(--muted-foreground);
+  font-size: 11px;
+  line-height: 1.7;
+  margin: 5px 0 0;
+}
+.status-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--success);
+  flex-shrink: 0;
+}
+.sidebar-security > .status-dot {
+  margin: 8px 0 0 auto;
+}
+.account-content {
+  min-width: 0;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  min-height: 576px;
+  overflow: hidden;
+}
+.content-heading {
+  padding: 28px 32px 25px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+}
+.content-heading .section-eyebrow {
+  margin-bottom: 8px;
+}
+.content-heading h2 {
+  font: 500 25px/1.3 var(--font-heading);
+  margin: 0;
+}
+.content-heading p:last-child {
+  font-size: 12px;
+  color: var(--muted-foreground);
+  margin: 7px 0 0;
+}
+.heading-icon {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  color: var(--primary);
+  background: var(--secondary);
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+.profile-body,
+.tab-body {
+  padding: 29px 32px 0;
+}
+.profile-section-title {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 24px;
+}
+.account-page h3 {
+  font-family: var(--font-heading);
+  font-size: 15px;
+  font-weight: 500;
+  margin: 0;
+}
+.profile-section-title span {
+  font-size: 10px;
+  color: var(--muted-foreground);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.profile-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 23px 22px;
+}
+.field-wide {
+  grid-column: span 2;
+}
+.field-label {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+  font-weight: 500;
+  margin-bottom: 9px;
+}
+.verified-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--success);
+  font-size: 10px;
+}
+.field-value {
+  display: flex;
+  align-items: center;
+  min-height: 49px;
+  gap: 11px;
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px 14px;
+}
+.field-value > svg {
+  color: var(--muted-foreground);
+  flex-shrink: 0;
+}
+.field-value > span {
+  min-width: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.field-value > .mono-value {
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+.account-status-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 30px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+  gap: 12px;
+}
+.info-stat {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.stat-icon {
+  display: grid;
+  place-items: center;
+  width: 35px;
+  height: 35px;
+  border-radius: 7px;
+  background: var(--muted);
+  color: var(--muted-foreground);
+  flex-shrink: 0;
+}
+.info-stat.success .stat-icon {
+  background: var(--success-soft);
+  color: var(--success);
+}
+.info-stat.primary .stat-icon {
+  background: var(--secondary);
+  color: var(--primary);
+}
+.info-stat p {
+  margin: 0 0 4px;
+  color: var(--muted-foreground);
+  font-size: 10px;
+}
+.info-stat strong {
+  font-size: 12px;
+  font-weight: 500;
+}
+.profile-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  font-size: 10px;
+  color: var(--muted-foreground);
+  margin: 30px -32px 0;
+  padding: 15px 20px;
+  background: var(--background);
+  border-top: 1px solid var(--border);
+}
+.account-page-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 27px 0;
+  font-size: 10px;
+  color: var(--muted-foreground);
+}
+.account-message {
+  margin: 20px 32px 0;
+  padding: 12px 14px;
+  border-radius: 6px;
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  background: var(--secondary);
+  color: var(--primary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.account-message > svg {
+  flex-shrink: 0;
+}
+.account-message.error {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+.account-message.success {
+  background: var(--success-soft);
+  color: var(--success);
+}
+.resume-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+}
+.resume-heading p,
+.empty-state p {
+  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 1.7;
+  margin: 7px 0 0;
+}
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 60px 20px;
+}
+.document-art {
+  color: var(--primary);
+  position: relative;
+  padding: 16px;
+  background: var(--secondary);
+  border-radius: 8px;
+  margin-bottom: 22px;
+}
+.document-art > span {
+  position: absolute;
+  right: -5px;
+  bottom: -5px;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  border: 4px solid var(--card);
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+}
+.empty-state > button {
+  margin-top: 23px;
+}
+.plan-section {
+  padding: 26px;
+  background: var(--secondary);
+  border-radius: 8px;
+  color: var(--foreground);
+}
+.plan-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--primary);
+  margin-bottom: 18px;
+}
+.plan-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 500;
+}
+.plan-section h3 {
+  font-size: 24px;
+}
+.plan-section p {
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--muted-foreground);
+}
+.plan-features {
+  display: flex;
+  gap: 22px;
+  flex-wrap: wrap;
+  margin-top: 20px;
+}
+.plan-features span {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 11px;
+  color: var(--primary);
+}
+.subscription-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  padding: 22px 0;
+  border-bottom: 1px solid var(--border);
+}
+.subscription-row > span {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 12px;
+}
+.billing-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding: 25px 0;
+  gap: 20px;
+}
+.security-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 215px;
+  gap: 30px;
+  padding-bottom: 32px;
+}
+.password-field {
+  margin-bottom: 22px;
+}
+.password-field label {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  margin-bottom: 9px;
+}
+.password-input {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 5px 4px 13px;
+  min-height: 47px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--background);
+}
+.password-input:focus-within {
+  outline: 2px solid var(--secondary);
+  border-color: var(--primary);
+}
+.password-input > svg {
+  color: var(--muted-foreground);
+  flex-shrink: 0;
+}
+.password-input input {
+  width: 100%;
+  min-width: 0;
+  outline: none;
+  background: transparent;
+  font-size: 13px;
+}
+.password-input input::placeholder {
+  color: var(--muted-foreground);
+}
+.password-input button {
+  color: var(--muted-foreground);
+  flex-shrink: 0;
+}
+.password-advice {
+  border-left: 1px solid var(--border);
+  padding-left: 23px;
+  color: var(--primary);
+}
+.password-advice h3 {
+  color: var(--foreground);
+  margin-top: 15px;
+}
+.password-advice p {
+  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 1.8;
+}
+.password-advice ul {
+  list-style: none;
+  padding: 15px 0 0;
+  margin: 20px 0 0;
+  border-top: 1px solid var(--border);
+}
+.password-advice li {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  color: var(--muted-foreground);
+  font-size: 10px;
+  line-height: 1.7;
+  margin-bottom: 9px;
+}
+.password-advice li svg {
+  flex-shrink: 0;
+  color: var(--success);
+  margin-top: 2px;
+}
+@media (max-width: 1000px) {
+  .account-shell {
+    padding: 30px 24px;
+  }
+  .account-workspace {
+    grid-template-columns: 220px minmax(0, 1fr);
+    gap: 24px;
+  }
+  .security-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .password-advice {
+    border-left: 0;
+    border-top: 1px solid var(--border);
+    padding: 24px 0 0;
+  }
+  .account-status-row {
+    gap: 8px;
+  }
+  .info-stat {
+    gap: 7px;
+  }
+}
+@media (max-width: 760px) {
+  .account-shell {
+    padding: 24px 18px;
+  }
+  .account-breadcrumb {
+    margin-bottom: 24px;
+  }
+  .account-identity {
+    align-items: flex-start;
+    gap: 12px;
+    padding-bottom: 24px;
+  }
+  .identity-person {
+    gap: 13px;
+  }
+  .account-avatar {
+    width: 52px;
+    height: 52px;
+    font-size: 20px;
+    border-radius: 12px;
+  }
+  .identity-title h1 {
+    font-size: 23px;
+  }
+  .identity-title {
+    gap: 8px;
+  }
+  .logout-button {
+    width: 36px;
+    padding: 0;
+    overflow: hidden;
+    font-size: 0;
+    gap: 0;
+  }
+  .logout-button svg {
+    width: 17px;
+    height: 17px;
+  }
+  .account-workspace {
+    display: block;
+    margin-top: 23px;
+  }
+  .account-sidebar > .section-eyebrow,
+  .sidebar-security {
+    display: none;
+  }
+  .account-sidebar nav {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 4px;
+    margin-bottom: 22px;
+  }
+  .account-nav {
+    height: 67px;
+    padding: 8px 3px;
+    flex-direction: column;
+    gap: 7px;
+  }
+  .account-nav strong {
+    font-size: 10px;
+    text-align: center;
+  }
+  .account-nav small,
+  .account-nav .nav-chevron {
+    display: none;
+  }
+  .account-nav span {
+    flex: initial;
+  }
+  .account-content {
+    min-height: 0;
+  }
+  .content-heading {
+    padding: 23px;
+  }
+  .profile-body,
+  .tab-body {
+    padding: 24px 22px 0;
+  }
+  .profile-section-title {
+    gap: 7px;
+  }
+  .profile-section-title span {
+    font-size: 9px;
+  }
+  .profile-fields {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 21px;
+  }
+  .field-wide {
+    grid-column: auto;
+  }
+  .profile-footer {
+    margin: 25px -22px 0;
+    font-size: 9px;
+    line-height: 1.6;
+  }
+  .account-status-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 17px;
+  }
+  .info-stat p {
+    font-size: 11px;
+  }
+  .info-stat strong {
+    font-size: 13px;
+  }
+  .stat-icon {
+    width: 36px;
+    height: 36px;
+  }
+  .resume-heading,
+  .subscription-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .empty-state {
+    padding: 45px 0;
+  }
+  .billing-summary {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .security-layout {
+    padding-bottom: 24px;
+  }
+  .account-message {
+    margin: 20px 22px 0;
+  }
+  .plan-section {
+    padding: 22px;
+  }
+  .plan-section h3 {
+    font-size: 22px;
+  }
+}
+/* Portable controls; no Tailwind configuration required. */
+.dashboard-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  height: 38px;
+  padding: 0 15px;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  transition: background 150ms;
+}
+.dashboard-button svg {
+  flex-shrink: 0;
+}
+.dashboard-button:hover {
+  opacity: 0.9;
+}
+.dashboard-button:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 3px;
+}
+.dashboard-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.dashboard-button--outline {
+  background: var(--card);
+  color: var(--foreground);
+  border-color: var(--border);
+}
+.dashboard-button--ghost {
+  background: transparent;
+  color: var(--muted-foreground);
+}
+.dashboard-button--ghost:hover {
+  background: var(--accent);
+}
+.dashboard-button--icon {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+}
+.dashboard-button.account-nav {
+  height: 68px;
+  justify-content: flex-start;
+  padding: 12px 13px;
+  gap: 13px;
+  border: 0;
+  font-weight: 400;
+  border-radius: 7px;
+  white-space: normal;
+}
+.dashboard-button.account-nav.is-active {
+  background: var(--secondary);
+  color: var(--primary);
+}
+.password-input input {
+  border: 0;
+  color: var(--foreground);
+  font-family: var(--font-body);
+}
+@media (max-width: 760px) {
+  .dashboard-button.account-nav {
+    height: 67px;
+    padding: 8px 3px;
+    flex-direction: column;
+    gap: 7px;
+  }
+  .dashboard-button.logout-button {
+    width: 36px;
+    padding: 0;
+    font-size: 0;
+    gap: 0;
+  }
+}
+
+/* My Resumes collection */
+.my-resumes {
+  padding-bottom: 30px;
+}
+.my-resumes .resume-heading {
+  align-items: center;
+  gap: 18px;
+}
+.my-resumes__heading-actions,
+.my-resumes__empty-actions {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+.my-resumes__refresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.my-resumes__spin {
+  animation: my-resumes-spin 0.9s linear infinite;
+}
+@keyframes my-resumes-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.my-resumes__message {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  margin: 0 0 18px;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.my-resumes__message > span {
+  flex: 1;
+}
+.my-resumes__message button {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.my-resumes__message--error {
+  color: var(--danger);
+  background: var(--danger-soft);
+  border-color: color-mix(in oklab, var(--danger) 20%, var(--border));
+}
+.my-resumes__message--success {
+  color: var(--success);
+  background: var(--success-soft);
+}
+.my-resumes__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+.my-resume-card {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--card);
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease;
+}
+.my-resume-card:hover {
+  border-color: color-mix(in oklab, var(--primary) 35%, var(--border));
+  box-shadow: 0 10px 28px rgb(30 20 60 / 7%);
+  transform: translateY(-2px);
+}
+.my-resume-card__preview {
+  height: 235px;
+  overflow: hidden;
+  position: relative;
+  background: #f1f0f6;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 16px 12px 0;
+}
+.my-resume-card__paper {
+  width: 794px;
+  min-height: 1123px;
+  flex: 0 0 794px;
+  background: white;
+  transform: scale(0.29);
+  transform-origin: top center;
+  pointer-events: none;
+  box-shadow: 0 2px 12px rgb(15 23 42 / 12%);
+}
+.my-resume-card__preview-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  display: grid;
+  place-items: center;
+  color: white;
+  background: rgb(25 20 45 / 0);
+  opacity: 0;
+  transition:
+    opacity 0.18s ease,
+    background 0.18s ease;
+}
+.my-resume-card:hover .my-resume-card__preview-overlay,
+.my-resume-card__preview-overlay:focus-visible {
+  opacity: 1;
+  background: rgb(25 20 45 / 35%);
+}
+.my-resume-card__preview-overlay span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 7px;
+  background: var(--primary);
+  font-size: 12px;
+  font-weight: 600;
+  box-shadow: 0 4px 18px rgb(0 0 0 / 15%);
+}
+.my-resume-card__content {
+  padding: 16px;
+}
+.my-resume-card__title-row {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+}
+.my-resume-card__file-icon {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  color: var(--primary);
+  background: var(--secondary);
+}
+.my-resume-card__title {
+  min-width: 0;
+  flex: 1;
+}
+.my-resume-card__title h4 {
+  font: 500 14px/1.4 var(--font-heading);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.my-resume-card__title p {
+  color: var(--muted-foreground);
+  font-size: 11px;
+  margin-top: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.my-resume-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 13px;
+}
+.my-resume-card__template {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 4px;
+  padding: 4px 7px;
+  color: var(--primary);
+  background: var(--secondary);
+  font-size: 10px;
+  font-weight: 600;
+}
+.my-resume-card__date {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--muted-foreground);
+  font-size: 10px;
+}
+.my-resume-card__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 15px;
+}
+.my-resume-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  font-size: 11px;
+  flex: 1;
+}
+.my-resume-action--delete {
+  color: var(--danger);
+}
+.my-resume-action--delete:hover {
+  background: var(--danger-soft);
+  border-color: color-mix(in oklab, var(--danger) 25%, var(--border));
+}
+.my-resumes__state {
+  min-height: 220px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted-foreground);
+  text-align: center;
+  gap: 9px;
+}
+.my-resumes__state h3 {
+  color: var(--foreground);
+  font-size: 14px;
+}
+.my-resumes__state p {
+  font-size: 12px;
+}
+.my-resumes__loader {
+  width: 28px;
+  height: 28px;
+  border: 3px solid var(--secondary);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: my-resumes-spin 0.8s linear infinite;
+}
+.my-resume-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  background: #f1f2f6;
+  color: #20202a;
+}
+.my-resume-modal__toolbar {
+  min-height: 76px;
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  background: white;
+  border-bottom: 1px solid #e4e4ec;
+  box-shadow: 0 2px 10px rgb(20 20 40 / 4%);
+}
+.my-resume-modal__heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.my-resume-modal__icon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  border-radius: 9px;
+  background: var(--secondary);
+  color: var(--primary);
+}
+.my-resume-modal__heading h2 {
+  font: 600 15px/1.4 var(--font-heading);
+}
+.my-resume-modal__heading p {
+  font-size: 11px;
+  color: #747386;
+  margin-top: 3px;
+}
+.my-resume-modal__actions {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-shrink: 0;
+}
+.my-resume-modal__actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 38px;
+}
+.my-resume-modal__viewport {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 28px 20px 50px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+.my-resume-modal__paper {
+  width: 794px;
+  min-height: 1123px;
+  flex: 0 0 794px;
+  background: white;
+  box-shadow: 0 8px 34px rgb(20 20 40 / 12%);
+}
+.my-resume-modal__paper .resume-canvas {
+  width: 100%;
+  min-height: 1123px;
+}
+@media (max-width: 760px) {
+  .my-resumes .resume-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .my-resumes__heading-actions {
+    width: 100%;
+  }
+  .my-resumes__heading-actions > button:last-child {
+    margin-left: auto;
+  }
+  .my-resumes__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .my-resume-modal__toolbar {
+    padding: 10px 12px;
+    min-height: 68px;
+  }
+  .my-resume-modal__heading {
+    gap: 8px;
+  }
+  .my-resume-modal__icon {
+    width: 34px;
+    height: 34px;
+  }
+  .my-resume-modal__heading h2 {
+    font-size: 12px;
+    max-width: 38vw;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .my-resume-modal__heading p {
+    font-size: 10px;
+  }
+  .my-resume-modal__actions {
+    gap: 6px;
+  }
+  .my-resume-modal__actions button {
+    min-height: 34px;
+    padding: 0 9px;
+    font-size: 11px;
+  }
+  .my-resume-modal__viewport {
+    justify-content: flex-start;
+    padding: 16px 12px 32px;
+  }
+}
+@media print {
+  @page {
+    size: A4;
+    margin: 0;
+  }
+  html,
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+  }
+  body.resume-modal-printing * {
+    visibility: hidden !important;
+  }
+  body.resume-modal-printing .my-resume-modal,
+  body.resume-modal-printing .my-resume-modal * {
+    visibility: visible !important;
+  }
+  .my-resume-modal {
+    position: absolute !important;
+    inset: 0 auto auto 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    display: block !important;
+    background: white !important;
+  }
+  .my-resume-modal__toolbar {
+    display: none !important;
+  }
+  .my-resume-modal__viewport {
+    display: block !important;
+    position: static !important;
+    overflow: visible !important;
+    height: auto !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  .my-resume-modal__paper {
+    width: 100% !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    break-inside: auto !important;
+  }
+  .my-resume-modal__paper .resume-canvas {
+    width: 100% !important;
+    min-height: 0 !important;
+  }
+  .my-resume-card,
+  .my-resumes__message {
+    display: none !important;
+  }
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}

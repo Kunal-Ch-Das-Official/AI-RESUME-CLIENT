@@ -1,0 +1,23 @@
+/* Import this file in your app's global stylesheet, or copy the animation into it. */
+.brand-marquee-track {
+  animation: brand-marquee-scroll 34s linear infinite;
+}
+
+.brand-marquee-track:hover {
+  animation-play-state: paused;
+}
+
+@keyframes brand-marquee-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brand-marquee-track {
+    animation: none;
+  }
+}

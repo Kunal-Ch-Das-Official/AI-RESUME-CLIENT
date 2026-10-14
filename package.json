@@ -1,0 +1,34 @@
+{
+  "name": "ai-resume",
+  "version": "2.0.0",
+  "private": true,
+  "keywords": ["Free Resume", "AI Resume", "ATS Resume", "Resume Maker"],
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+    "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "login": "npx wrangler login"
+  },
+  "dependencies": {
+    "@opennextjs/cloudflare": "^1.20.9",
+    "@radix-ui/react-slot": "^1.4.0",
+    "@tabler/icons-react": "^3.48.0",
+    "crypto": "^1.0.1",
+    "framer-motion": "^14.0.0",
+    "motion": "^14.0.0",
+    "next": "16.3.8",
+    "primeicons": "^8.0.2",
+    "primereact": "^11.2.0",
+    "quill": "^2.0.2",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "react-icons": "^5.7.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "tailwindcss": "^4",
+    "wrangler": "^4.150.0"
+  }
+}

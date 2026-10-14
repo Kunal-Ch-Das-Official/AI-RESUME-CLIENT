@@ -1,0 +1,84 @@
+
+.loader {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.container {
+  overflow: visible;
+}
+
+.track,
+.car {
+  fill: none;
+  stroke-width: 2.5;
+}
+
+.track {
+  stroke: #d0d0d0;
+}
+
+.car {
+  stroke: #4f8cff;
+  stroke-linecap: round;
+  stroke-dasharray: 25 75;
+  animation: borderMove 2s linear infinite;
+}
+
+.lines line {
+  stroke: #666;
+  stroke-width: 3;
+  stroke-dasharray: var(--len);
+  stroke-dashoffset: var(--len);
+  animation: typeLine 2.4s ease-in-out infinite;
+}
+
+.lines .indent {
+  stroke: #4f8cff;
+}
+
+.lines line:nth-child(1) {
+  --len: 20;
+  animation-delay: 0s;
+}
+
+.lines line:nth-child(2) {
+  --len: 14;
+  animation-delay: 0.3s;
+}
+
+.lines line:nth-child(3) {
+  --len: 24;
+  animation-delay: 0.6s;
+}
+
+.lines line:nth-child(4) {
+  --len: 10;
+  animation-delay: 0.9s;
+}
+
+@keyframes borderMove {
+  from {
+    stroke-dashoffset: 100;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes typeLine {
+  0% {
+    stroke-dashoffset: var(--len);
+    opacity: 0.3;
+  }
+  35%,
+  70% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 0.15;
+  }
+}
