@@ -1,5 +1,6 @@
 // components/builder/tabs/PublicationsTab.jsx
 import React, { useState } from "react";
+import { SortableList, SortableCard } from "./SortableList";
 import {
   IconTrash,
   IconPlus,
@@ -25,10 +26,12 @@ export default function PublicationsTab({
     e.dataTransfer.setData("text/plain", index);
   };
 
-  const handleDrop = (e, targetIndex) => {
-    e.preventDefault();
-    const sourceIndex = parseInt(e.dataTransfer.getData("text/plain"), 10);
-    if (isNaN(sourceIndex) || sourceIndex === targetIndex) return;
+  const reorderFromTouch = (sourceIndex, targetIndex) => {
+    if (
+      sourceIndex < 0 || sourceIndex >= entries.length ||
+      targetIndex < 0 || targetIndex >= entries.length ||
+      sourceIndex === targetIndex
+    ) return;
 
     const updatedEntries = [...entries];
     const [movedItem] = updatedEntries.splice(sourceIndex, 1);
@@ -46,6 +49,13 @@ export default function PublicationsTab({
         publications: reorderedPubs,
       },
     }));
+  };
+
+  const handleDrop = (e, targetIndex) => {
+    e.preventDefault();
+    const sourceIndex = parseInt(e.dataTransfer.getData("text/plain"), 10);
+    if (Number.isNaN(sourceIndex)) return;
+    reorderFromTouch(sourceIndex, targetIndex);
   };
 
   const handleDragOver = (e) => e.preventDefault();
@@ -89,18 +99,16 @@ export default function PublicationsTab({
       title="Publications"
       description="Research papers, articles and reference docs"
     >
+      <SortableList items={entries.map(([id]) => String(id))} onReorder={reorderFromTouch}>
       <div className="grid gap-3">
         {entries.map(([id, pub], index) => {
           const currentMode =
             pubSourceTypes[id] || (pub.referenceUrl ? "url" : "upload");
 
           return (
+            <SortableCard key={String(id)} id={String(id)}>
             <div
               key={id}
-              draggable
-              onDragStart={(e) => handleDragStart(e, index)}
-              onDrop={(e) => handleDrop(e, index)}
-              onDragOver={handleDragOver}
               className="border border-gray-200 rounded-md shadow"
             >
               <Section
@@ -249,6 +257,7 @@ export default function PublicationsTab({
                 </div>
               </Section>
             </div>
+            </SortableCard>
           );
         })}
 
@@ -279,6 +288,7 @@ export default function PublicationsTab({
           <IconPlus size={14} /> Add Publication
         </button>
       </div>
+      </SortableList>
     </Section>
   );
 }

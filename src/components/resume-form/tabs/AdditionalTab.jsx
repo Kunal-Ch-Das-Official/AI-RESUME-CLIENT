@@ -1,5 +1,6 @@
 // components/builder/tabs/AdditionalTab.jsx
 import React, { useState } from "react";
+import { SortableList, SortableCard } from "./SortableList";
 import {
   IconTrash,
   IconPlus,
@@ -83,35 +84,42 @@ export default function AdditionalTab({ resume, setResume, update }) {
     e.dataTransfer.setData("text/plain", index);
   };
 
-  const handleLanguageDrop = (e, targetIndex) => {
-    e.preventDefault();
-    const sourceIndex = parseInt(e.dataTransfer.getData("text/plain"), 10);
-    if (isNaN(sourceIndex) || sourceIndex === targetIndex) return;
-
+  const reorderLanguages = (sourceIndex, targetIndex) => {
+    if (
+      sourceIndex < 0 || sourceIndex >= languages.length ||
+      targetIndex < 0 || targetIndex >= languages.length ||
+      sourceIndex === targetIndex
+    ) return;
     const next = [...languages];
     const [moved] = next.splice(sourceIndex, 1);
     next.splice(targetIndex, 0, moved);
     update("languageProficiency.languageKnows", next);
   };
 
+  const handleLanguageDrop = (e, targetIndex) => {
+    e.preventDefault();
+    const sourceIndex = parseInt(e.dataTransfer.getData("text/plain"), 10);
+    if (Number.isNaN(sourceIndex)) return;
+    reorderLanguages(sourceIndex, targetIndex);
+  };
+
   const handleContributionDragStart = (e, index) => {
     e.dataTransfer.setData("text/plain", index);
   };
 
-  const handleContributionDrop = (e, targetIndex) => {
-    e.preventDefault();
-    const sourceIndex = parseInt(e.dataTransfer.getData("text/plain"), 10);
-    if (isNaN(sourceIndex) || sourceIndex === targetIndex) return;
-
+  const reorderContributions = (sourceIndex, targetIndex) => {
+    if (
+      sourceIndex < 0 || sourceIndex >= contributionEntries.length ||
+      targetIndex < 0 || targetIndex >= contributionEntries.length ||
+      sourceIndex === targetIndex
+    ) return;
     const updatedEntries = [...contributionEntries];
     const [moved] = updatedEntries.splice(sourceIndex, 1);
     updatedEntries.splice(targetIndex, 0, moved);
-
     const reordered = {};
     updatedEntries.forEach(([id, item], index) => {
       reordered[id] = { ...item, priority: index + 1 };
     });
-
     setResume((current) => ({
       ...current,
       openSource: {
@@ -119,6 +127,13 @@ export default function AdditionalTab({ resume, setResume, update }) {
         contributions: reordered,
       },
     }));
+  };
+
+  const handleContributionDrop = (e, targetIndex) => {
+    e.preventDefault();
+    const sourceIndex = parseInt(e.dataTransfer.getData("text/plain"), 10);
+    if (Number.isNaN(sourceIndex)) return;
+    reorderContributions(sourceIndex, targetIndex);
   };
 
   const updateContribution = (id, field, value) => {
@@ -249,14 +264,12 @@ export default function AdditionalTab({ resume, setResume, update }) {
         title="Language Proficiency"
         description="Languages you know and your proficiency level"
       >
+      <SortableList items={languages.map((_, index) => String(index))} onReorder={reorderLanguages}>
         <div className="grid gap-3">
           {languages.map((language, index) => (
+            <SortableCard key={`language-${index}`} id={String(index)}>
             <div
               key={`${language.languageName || "language"}-${index}`}
-              draggable
-              onDragStart={(e) => handleLanguageDragStart(e, index)}
-              onDrop={(e) => handleLanguageDrop(e, index)}
-              onDragOver={(e) => e.preventDefault()}
               className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm"
             >
               <div className="flex items-center justify-between pb-2">
@@ -298,6 +311,7 @@ export default function AdditionalTab({ resume, setResume, update }) {
                 />
               </div>
             </div>
+            </SortableCard>
           ))}
 
           <button
@@ -308,20 +322,19 @@ export default function AdditionalTab({ resume, setResume, update }) {
             <IconPlus size={14} /> Add Language
           </button>
         </div>
+      </SortableList>
       </Section>
 
       <Section
         title="Open Source"
         description="Open-source projects and contributions"
       >
+      <SortableList items={contributionEntries.map(([projectName]) => String(projectName))} onReorder={reorderContributions}>
         <div className="grid gap-3">
           {contributionEntries.map(([projectName, contribution], index) => (
+            <SortableCard key={String(projectName)} id={String(projectName)}>
             <div
               key={projectName}
-              draggable
-              onDragStart={(e) => handleContributionDragStart(e, index)}
-              onDrop={(e) => handleContributionDrop(e, index)}
-              onDragOver={(e) => e.preventDefault()}
                className="border border-gray-200 rounded-md shadow"
             >
               <Section
@@ -371,6 +384,7 @@ export default function AdditionalTab({ resume, setResume, update }) {
                 />
               </Section>
             </div>
+            </SortableCard>
           ))}
 
           <div className="grid gap-2 rounded-lg border border-dashed border-indigo-200 bg-indigo-50/40 p-3 sm:grid-cols-[1fr_auto] sm:items-end">
@@ -389,6 +403,7 @@ export default function AdditionalTab({ resume, setResume, update }) {
             </button>
           </div>
         </div>
+      </SortableList>
       </Section>
     </div>
   );

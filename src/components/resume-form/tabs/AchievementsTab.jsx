@@ -1,5 +1,6 @@
 // components/builder/tabs/AchievementsTab.jsx
 import React, { useState } from "react";
+import { SortableList, SortableCard } from "./SortableList";
 import {
   IconTrash,
   IconPlus,
@@ -61,33 +62,33 @@ export default function AchievementsTab({
     e.dataTransfer.setData("text/plain", String(index));
   };
 
-  const handleDrop = (e, targetIndex) => {
-    e.preventDefault();
-    const sourceIndex = Number.parseInt(
-      e.dataTransfer.getData("text/plain"),
-      10,
-    );
-    if (Number.isNaN(sourceIndex) || sourceIndex === targetIndex) return;
-
+  const reorderAchievements = (sourceIndex, targetIndex) => {
+    if (
+      sourceIndex < 0 || sourceIndex >= entries.length ||
+      targetIndex < 0 || targetIndex >= entries.length ||
+      sourceIndex === targetIndex
+    ) return;
     const nextEntries = [...entries];
     const [moved] = nextEntries.splice(sourceIndex, 1);
     nextEntries.splice(targetIndex, 0, moved);
-
     setResume((current) => ({
       ...current,
       awardsAndAchievements: {
         ...(current.awardsAndAchievements || {}),
         priority: current.awardsAndAchievements?.priority || 8,
-        sectionTitle:
-          current.awardsAndAchievements?.sectionTitle ||
-          "Awards & Achievements",
-        achievements: nextEntries.map((entry, index) => ({
-          ...entry.achievement,
-          priority: index + 1,
-        })),
+        sectionTitle: current.awardsAndAchievements?.sectionTitle || "Awards & Achievements",
+        achievements: nextEntries.map((entry, index) => ({ ...entry.achievement, priority: index + 1 })),
       },
     }));
   };
+
+  const handleDrop = (e, targetIndex) => {
+    e.preventDefault();
+    const sourceIndex = Number.parseInt(e.dataTransfer.getData("text/plain"), 10);
+    if (Number.isNaN(sourceIndex)) return;
+    reorderAchievements(sourceIndex, targetIndex);
+  };
+
 
   const handleDocumentUpload = (index, file) => {
     if (!file) return;
@@ -175,6 +176,7 @@ export default function AchievementsTab({
       title="Awards & Achievements"
       description="Add awards, honors, accomplishments and supporting documents"
     >
+      <SortableList items={entries.map(({ originalIndex }) => String(originalIndex))} onReorder={reorderAchievements}>
       <div className="grid gap-3">
         {entries.map(({ achievement, originalIndex }, index) => {
           const currentMode =
@@ -184,12 +186,9 @@ export default function AchievementsTab({
             : [];
 
           return (
+            <SortableCard key={String(originalIndex)} id={String(originalIndex)}>
             <div
               key={`${achievement.title || "achievement"}-${originalIndex}`}
-              draggable
-              onDragStart={(e) => handleDragStart(e, index)}
-              onDrop={(e) => handleDrop(e, index)}
-              onDragOver={(e) => e.preventDefault()}
               className="border border-gray-200 rounded-md shadow"
             >
               <Section
@@ -387,6 +386,7 @@ export default function AchievementsTab({
                 </div>
               </Section>
             </div>
+            </SortableCard>
           );
         })}
 
@@ -398,6 +398,7 @@ export default function AchievementsTab({
           <IconPlus size={14} /> Add Achievement
         </button>
       </div>
+      </SortableList>
     </Section>
   );
 }

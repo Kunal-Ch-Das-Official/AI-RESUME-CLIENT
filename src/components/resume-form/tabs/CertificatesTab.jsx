@@ -1,5 +1,6 @@
 // components/builder/tabs/CertificatesTab.jsx
 import React, { useState } from "react";
+import { SortableList, SortableCard } from "./SortableList";
 import {
   IconTrash,
   IconPlus,
@@ -28,10 +29,12 @@ export default function CertificatesTab({
     e.dataTransfer.setData("text/plain", index);
   };
 
-  const handleDrop = (e, targetIndex) => {
-    e.preventDefault();
-    const sourceIndex = parseInt(e.dataTransfer.getData("text/plain"), 10);
-    if (isNaN(sourceIndex) || sourceIndex === targetIndex) return;
+  const reorderFromTouch = (sourceIndex, targetIndex) => {
+    if (
+      sourceIndex < 0 || sourceIndex >= entries.length ||
+      targetIndex < 0 || targetIndex >= entries.length ||
+      sourceIndex === targetIndex
+    ) return;
 
     const updatedEntries = [...entries];
     const [movedItem] = updatedEntries.splice(sourceIndex, 1);
@@ -49,6 +52,13 @@ export default function CertificatesTab({
         certificates: reorderedCerts,
       },
     }));
+  };
+
+  const handleDrop = (e, targetIndex) => {
+    e.preventDefault();
+    const sourceIndex = parseInt(e.dataTransfer.getData("text/plain"), 10);
+    if (Number.isNaN(sourceIndex)) return;
+    reorderFromTouch(sourceIndex, targetIndex);
   };
 
   const handleDragOver = (e) => e.preventDefault();
@@ -87,6 +97,7 @@ export default function CertificatesTab({
       title="Certificates"
       description="Add certification credentials & documents"
     >
+      <SortableList items={entries.map(([id]) => String(id))} onReorder={reorderFromTouch}>
       <div className="grid gap-3">
         {entries.map(([id, cert], index) => {
           const currentMode =
@@ -199,12 +210,9 @@ export default function CertificatesTab({
           };
 
           return (
+            <SortableCard key={String(id)} id={String(id)}>
             <div
               key={id}
-              draggable
-              onDragStart={(e) => handleDragStart(e, index)}
-              onDrop={(e) => handleDrop(e, index)}
-              onDragOver={handleDragOver}
               className="border border-gray-200 rounded-md shadow"
             >
               <Section
@@ -482,6 +490,7 @@ export default function CertificatesTab({
                 </div>
               </Section>
             </div>
+            </SortableCard>
           );
         })}
 
@@ -514,6 +523,7 @@ export default function CertificatesTab({
           <IconPlus size={14} /> Add Certificate
         </button>
       </div>
+      </SortableList>
     </Section>
   );
 }

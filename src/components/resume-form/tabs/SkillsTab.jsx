@@ -1,5 +1,6 @@
 // components/builder/tabs/SkillsTab.jsx
 import React, { useState } from "react";
+import { SortableList, SortableCard } from "./SortableList";
 import {
   IconTrash,
   IconPlus,
@@ -18,10 +19,12 @@ export default function SkillsTab({ resume, setResume, update }) {
     e.dataTransfer.setData("text/plain", index);
   };
 
-  const handleDrop = (e, targetIndex) => {
-    e.preventDefault();
-    const sourceIndex = parseInt(e.dataTransfer.getData("text/plain"), 10);
-    if (isNaN(sourceIndex) || sourceIndex === targetIndex) return;
+  const reorderFromTouch = (sourceIndex, targetIndex) => {
+    if (
+      sourceIndex < 0 || sourceIndex >= entries.length ||
+      targetIndex < 0 || targetIndex >= entries.length ||
+      sourceIndex === targetIndex
+    ) return;
 
     const updatedEntries = [...entries];
     const [movedItem] = updatedEntries.splice(sourceIndex, 1);
@@ -41,12 +44,20 @@ export default function SkillsTab({ resume, setResume, update }) {
     }));
   };
 
+  const handleDrop = (e, targetIndex) => {
+    e.preventDefault();
+    const sourceIndex = parseInt(e.dataTransfer.getData("text/plain"), 10);
+    if (Number.isNaN(sourceIndex)) return;
+    reorderFromTouch(sourceIndex, targetIndex);
+  };
+
   const handleDragOver = (e) => {
     e.preventDefault();
   };
 
   return (
     <Section title="Skills" description="Core technical competencies">
+      <SortableList items={entries.map(([group]) => String(group))} onReorder={reorderFromTouch}>
       <div className="grid gap-3">
         {entries.map(([group, skills], index) => {
           const handleAddSkill = () => {
@@ -71,12 +82,9 @@ export default function SkillsTab({ resume, setResume, update }) {
           };
 
           return (
+            <SortableCard key={String(group)} id={String(group)}>
             <div
               key={group}
-              draggable
-              onDragStart={(e) => handleDragStart(e, index)}
-              onDrop={(e) => handleDrop(e, index)}
-              onDragOver={handleDragOver}
               className="border border-gray-200 rounded-md shadow"
             >
               <Section
@@ -176,6 +184,7 @@ export default function SkillsTab({ resume, setResume, update }) {
                 )}
               </Section>
             </div>
+            </SortableCard>
           );
         })}
 
@@ -199,6 +208,7 @@ export default function SkillsTab({ resume, setResume, update }) {
           <IconPlus size={14} /> Add Skill Group
         </button>
       </div>
+      </SortableList>
     </Section>
   );
 }
