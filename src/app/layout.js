@@ -1,6 +1,7 @@
 import "./globals.css";
 import Navbar from "@/components/header/Navbar";
 import Footer from "@/components/Footer";
+import Adsense from "@/components/adsense/Adsense";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL.replace(/\/+$/, "");
 
@@ -36,13 +37,7 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en" data-scroll-behavior="smooth">
-      <head>
-        <script
-          async
-          src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${process.env.NEXT_PIBLIC_AD_SENSE_ID_CONFIG}`}
-          crossOrigin="anonymous"
-        ></script>
-      </head>
+      <Adsense pid={process.env.NEXT_PIBLIC_AD_SENSE_ID_CONFIG} />
       <body
         suppressHydrationWarning
         className="min-h-screen bg-white font-sans text-slate-900 antialiased selection:bg-indigo-500 selection:text-white"

@@ -26,7 +26,7 @@ export const metadata = {
 const Contact = () => {
   return (
     <div>
-      <ContactPage />
+      <ContactPage slotNo={process.env.NEXT_PUBLIC_CONTACT_PAGE_SLOT_NO}/>
     </div>
   );
 };

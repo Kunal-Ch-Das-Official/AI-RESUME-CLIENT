@@ -18,6 +18,7 @@ import {
 import TemplatePreview from "@/components/TemplatePreview";
 import { TEMPLATE_DEFINITIONS } from "@/lib/resume-data";
 import BrandMarquee from "../marquee/BrandMarquee";
+import MultiplexGridAdBanner from "../adsense/ad-slots/MultiplexGridAdBanner";
 
 const STEPS = [
   {
@@ -366,34 +367,16 @@ export default function HomeContent() {
         </div>
       </section>
 
-      {/* ========== MARQUEE ========== */}
-      {/* <section className="border-b border-slate-200 bg-white py-10">
-        <div className="mx-auto max-w-7xl px-4 text-center">
-          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-            Candidates built resumes here and got hired at top teams
-          </p>
-          <div
-            className="relative mt-6 flex w-full overflow-hidden"
-            style={{
-              maskImage:
-                "linear-gradient(to right, transparent, white 15%, white 85%, transparent)",
-            }}
-          >
-            <div className="flex animate-marquee shrink-0 items-center gap-12 sm:gap-20">
-              {[...COMPANIES, ...COMPANIES].map((c, idx) => (
-                <div
-                  key={`${c}-${idx}`}
-                  className="text-xl font-bold tracking-tight text-slate-400 transition-colors hover:text-slate-700"
-                >
-                  {c}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section> */}
+{/* Marquee  */}
       <BrandMarquee />
 
+
+<section className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8" style={{marginTop:"4rem"}}>
+        <MultiplexGridAdBanner
+          slotNo={process.env.NEXT_PUBLIC_HOME_PAGE_SLOT_NO}
+          showBadge={true}
+        />
+      </section>
       {/* ========== FEATURE GRID ========== */}
       <section className="py-20 lg:py-24 bg-slate-50/60">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">

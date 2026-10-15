@@ -2,15 +2,17 @@
 
 import { motion } from "framer-motion";
 import { IconSparkles } from "@tabler/icons-react";
+import SquareAdBanner from "../../components/adsense/ad-slots/SquareAdBanner";
 
-export default function AboutHero() {
+export default function AboutHero({ slotNo = process.env.NEXT_PUBLIC_ABOUT_PAGE_SLOT_NO }) {
   return (
     <section
       style={{
         position: "relative",
         overflow: "hidden",
         borderBottom: "1px solid #e2e8f0",
-        background: "linear-gradient(to bottom, rgba(238, 242, 255, 0.5), #ffffff)",
+        background:
+          "linear-gradient(to bottom, rgba(238, 242, 255, 0.5), #ffffff)",
         paddingTop: "5rem", // lg:pt-20 equivalent
         paddingBottom: "4rem",
       }}
@@ -47,7 +49,8 @@ export default function AboutHero() {
             right: 0,
             bottom: 0,
             left: 0,
-            backgroundImage: "linear-gradient(#e2e8f0 1px, transparent 1px), linear-gradient(90deg, #e2e8f0 1px, transparent 1px)",
+            backgroundImage:
+              "linear-gradient(#e2e8f0 1px, transparent 1px), linear-gradient(90deg, #e2e8f0 1px, transparent 1px)",
             backgroundSize: "20px 20px",
             opacity: 0.3,
             maskImage: "linear-gradient(to bottom, black, transparent)",
@@ -56,19 +59,17 @@ export default function AboutHero() {
         />
       </div>
 
+      {/* 50/50 Hero Flex Container */}
       <div
-        style={{
-          position: "relative",
-          margin: "0 auto",
-          maxWidth: "80rem", // max-w-7xl
-          paddingLeft: "1.5rem",
-          paddingRight: "1.5rem",
-        }}
+        className="relative mx-auto flex max-w-7xl flex-col items-center justify-between gap-10 px-4 sm:px-6 lg:flex-row lg:items-center lg:gap-12 lg:px-8"
+        style={{ paddingBottom: "4rem" }}
       >
+        {/* Left Side (50% Width): Text Content */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
+          className="w-full lg:w-1/2"
         >
           <span
             style={{
@@ -93,7 +94,6 @@ export default function AboutHero() {
           <h1
             style={{
               marginTop: "1.25rem",
-              maxWidth: "56rem", // max-w-4xl
               fontSize: "3.75rem", // lg:text-6xl equivalent
               fontWeight: 800,
               lineHeight: 1.08,
@@ -104,7 +104,8 @@ export default function AboutHero() {
             A better resume starts with a{" "}
             <span
               style={{
-                background: "linear-gradient(to right, #4f46e5, #7c3aed, #c026d3)", // indigo-600 to violet-600 to fuchsia-600
+                background:
+                  "linear-gradient(to right, #4f46e5, #7c3aed, #c026d3)", // indigo-600 to violet-600 to fuchsia-600
                 WebkitBackgroundClip: "text",
                 backgroundClip: "text",
                 WebkitTextFillColor: "transparent",
@@ -119,7 +120,7 @@ export default function AboutHero() {
           <p
             style={{
               marginTop: "1.25rem",
-              maxWidth: "42rem", // max-w-2xl
+              maxWidth: "42rem",
               fontSize: "1rem",
               lineHeight: 1.625, // leading-relaxed
               color: "#475569", // slate-600
@@ -128,6 +129,22 @@ export default function AboutHero() {
             AI-Resume is designed around a simple idea: your resume should
             communicate your value clearly before it tries to impress anyone.
           </p>
+        </motion.div>
+
+        {/* Right Side (50% Width): Ad Container */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+          className="flex w-full items-center justify-center lg:w-1/2"
+        >
+          <div className="w-full overflow-hidden rounded-2xl border border-slate-200/80 bg-white/70 p-4 shadow-sm backdrop-blur-sm">
+            <SquareAdBanner
+              slotNo={slotNo}
+              dataAdFormat="auto"
+              dataFullWidthResponsive={true}
+            />
+          </div>
         </motion.div>
       </div>
     </section>

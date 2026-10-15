@@ -28,7 +28,7 @@ export const metadata = {
 export default function About() {
   return (
     <main className="min-h-screen bg-white">
-      <AboutHero />
+      <AboutHero slotNo = {process.env.NEXT_PUBLIC_ABOUT_PAGE_SLOT_NO} />
 
       <section className="py-20 lg:py-24">
         <div className="mx-auto grid max-w-5xl grid-cols-1 gap-8 px-4 sm:px-6 lg:grid-cols-12 lg:gap-12 lg:px-8">
