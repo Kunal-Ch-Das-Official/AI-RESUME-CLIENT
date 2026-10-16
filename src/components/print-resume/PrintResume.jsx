@@ -11,7 +11,16 @@ import {
   getPendingResumeDraft,
   updatePendingResumeDraft,
 } from "@/components/utils/resumeDraftStorage";
-import { IconPrinter, IconPalette, IconLayout } from "@tabler/icons-react";
+import {
+  IconPrinter,
+  IconPalette,
+  IconLayout,
+  IconSparkles,
+  IconChartBar,
+  IconArrowBackUp,
+  IconCheck,
+} from "@tabler/icons-react";
+import AtsScoreModal from "./AtsScoreModal";
 
 function getResponseMessage(result, fallback) {
   const details = Array.isArray(result?.details)
@@ -33,6 +42,8 @@ function getResponseMessage(result, fallback) {
 
 export default function PrintResume({ resumeInfoId = null }) {
   const [resumeInfo, setResumeInfo] = useState(null);
+  const [originalResumeInfo, setOriginalResumeInfo] = useState(null);
+  const [isPolished, setIsPolished] = useState(false);
   const [pendingFiles, setPendingFiles] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -40,6 +51,15 @@ export default function PrintResume({ resumeInfoId = null }) {
   const [isDraft, setIsDraft] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [savedResumeId, setSavedResumeId] = useState(null);
+
+  // AI Polish state
+  const [isPolishing, setIsPolishing] = useState(false);
+  const [showPolishedToast, setShowPolishedToast] = useState(false);
+
+  // ATS Modal state
+  const [atsModalOpen, setAtsModalOpen] = useState(false);
+  const [atsReport, setAtsReport] = useState(null);
+  const [isCheckingAts, setIsCheckingAts] = useState(false);
 
   // Interactive state for theme color and template overrides in preview
   const [activeTheme, setActiveTheme] = useState("light-blue");
@@ -90,11 +110,14 @@ export default function PrintResume({ resumeInfoId = null }) {
           window.sessionStorage.removeItem("airesume-auth-return-to");
           setIsDraft(true);
           setResumeInfo(draft.resume);
+          setOriginalResumeInfo(draft.resume);
           setPendingFiles(draft.pendingFiles || {});
           setSavedResumeId(draft.savedResumeId || null);
           setActiveTheme(draft.resume.themeColor || "light-blue");
           setActiveTemplate(
-            draft.templateName || draft.resume.templateName || "clean-ats-optimizer",
+            draft.templateName ||
+              draft.resume.templateName ||
+              "clean-ats-optimizer",
           );
           return;
         }
@@ -105,15 +128,19 @@ export default function PrintResume({ resumeInfoId = null }) {
         );
 
         if (!response.ok) {
-          throw new Error("Something went wrong. Resume data is not available.");
+          throw new Error(
+            "Something went wrong. Resume data is not available.",
+          );
         }
 
         const result = await response.json();
         const data = result.data || result;
         if (cancelled) return;
         setResumeInfo(data);
+        setOriginalResumeInfo(data);
         if (data?.themeColor) setActiveTheme(data.themeColor);
-        if (data?.templateName) setActiveTemplate(data.templateName.replace(/"/g, ""));
+        if (data?.templateName)
+          setActiveTemplate(data.templateName.replace(/"/g, ""));
       } catch (err) {
         if (!cancelled) setError(err?.message || "Unable to load resume.");
       } finally {
@@ -127,6 +154,97 @@ export default function PrintResume({ resumeInfoId = null }) {
     };
   }, [resumeInfoId]);
 
+  // AI Polishing Handler: triggers only when clicked
+  const handlePolishResume = async () => {
+    if (!resumeInfo || isPolishing) return;
+    setIsPolishing(true);
+    setSaveError("");
+
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_API_URL || ""}/api/v1/resumes/polish`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ resume: resumeInfo }),
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to polish resume content.");
+      }
+
+      const result = await response.json();
+      if (result?.resume) {
+        if (!isPolished) {
+          setOriginalResumeInfo(resumeInfo);
+        }
+        setResumeInfo(result.resume);
+        setIsPolished(true);
+
+        if (isDraft) {
+          await updatePendingResumeDraft({ resume: result.resume });
+        }
+
+        setShowPolishedToast(true);
+        setTimeout(() => setShowPolishedToast(false), 3000);
+      }
+    } catch (err) {
+      console.error("Resume polishing failed:", err);
+      setSaveError(err?.message || "Unable to polish resume right now.");
+    } finally {
+      setIsPolishing(false);
+    }
+  };
+
+  // Revert Polished Data Handler
+  const handleRevertResume = async () => {
+    if (!originalResumeInfo) return;
+    setResumeInfo(originalResumeInfo);
+    setIsPolished(false);
+
+    if (isDraft) {
+      await updatePendingResumeDraft({ resume: originalResumeInfo });
+    }
+  };
+
+  // ATS Check Handler: triggers only when clicked
+  const handleCheckAts = async () => {
+    if (!resumeInfo || isCheckingAts) return;
+    setIsCheckingAts(true);
+    setAtsModalOpen(true);
+    setSaveError("");
+
+    try {
+      const targetRole =
+        resumeInfo?.basicInfo?.headline || "Software Engineering";
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_API_URL || ""}/api/v1/resumes/ats-check`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            resume: resumeInfo,
+            target_role: targetRole,
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to evaluate ATS score.");
+      }
+
+      const result = await response.json();
+      setAtsReport(result.report);
+    } catch (err) {
+      console.error("ATS Check failed:", err);
+      setSaveError(err?.message || "Unable to calculate ATS score right now.");
+      setAtsModalOpen(false);
+    } finally {
+      setIsCheckingAts(false);
+    }
+  };
+
   const handlePrintPdf = async () => {
     if (!isDraft) {
       window.print();
@@ -138,8 +256,6 @@ export default function PrintResume({ resumeInfoId = null }) {
     setSaveError("");
 
     try {
-      // On Print / PDF, persist the resume first. Authentication is checked afterward,
-      // never on Proceed. If login is needed, the saved resume ID is retained for retry.
       let documentId = savedResumeId;
       if (!documentId) {
         const uploadData = {
@@ -166,24 +282,34 @@ export default function PrintResume({ resumeInfoId = null }) {
 
         if (!response.ok) {
           throw new Error(
-            getResponseMessage(result, `Failed to save resume (Status: ${response.status}).`),
+            getResponseMessage(
+              result,
+              `Failed to save resume (Status: ${response.status}).`,
+            ),
           );
         }
 
-        const savedResume = result?.data?.resume || result?.data || result?.resume || result;
-        documentId = savedResume?._id || savedResume?.id || result?._id || result?.id;
+        const savedResume =
+          result?.data?.resume || result?.data || result?.resume || result;
+        documentId =
+          savedResume?._id || savedResume?.id || result?._id || result?.id;
         if (!documentId) {
-          throw new Error("The resume was submitted, but the server did not return a resume ID.");
+          throw new Error(
+            "The resume was submitted, but the server did not return a resume ID.",
+          );
         }
 
         setSavedResumeId(documentId);
-        // Keep the ID in IndexedDB so retrying a profile-link operation does not create duplicates.
-        await updatePendingResumeDraft({ savedResumeId: documentId }).catch((storageError) => {
-          console.warn("Could not persist the saved resume ID locally:", storageError);
-        });
+        await updatePendingResumeDraft({ savedResumeId: documentId }).catch(
+          (storageError) => {
+            console.warn(
+              "Could not persist the saved resume ID locally:",
+              storageError,
+            );
+          },
+        );
       }
 
-      // The upload has succeeded and we have a stable database ID. Only now check auth.
       const authResponse = await fetch(process.env.NEXT_PUBLIC_LOGGEDIN_USER, {
         method: "GET",
         credentials: "include",
@@ -195,34 +321,36 @@ export default function PrintResume({ resumeInfoId = null }) {
       if (authResponse.ok) {
         authData = await authResponse.json();
       }
-      const user = authData?.data?.user || authData?.user || authData?.data || authData;
+      const user =
+        authData?.data?.user || authData?.user || authData?.data || authData;
       const userId = user?.id || user?.userId || user?._id;
 
       if (!authResponse.ok || !userId) {
-        // Resume is already saved. Return here after login; retry will not upload it again.
         const returnTo = `${window.location.pathname}${window.location.search}`;
         window.sessionStorage.setItem("airesume-auth-return-to", returnTo);
         window.location.href = "/sign-in";
         return;
       }
 
-      // Do not open print until the saved resume has been attached to the authenticated profile.
       await addResumeId(documentId, userId);
       await deletePendingResumeDraft().catch((storageError) => {
-        console.warn("Could not clear the temporary resume draft:", storageError);
+        console.warn(
+          "Could not clear the temporary resume draft:",
+          storageError,
+        );
       });
       window.print();
     } catch (err) {
       console.error("Resume save/print error:", err);
       setSaveError(
-        err?.message || "Unable to save your resume. Please try again before printing.",
+        err?.message ||
+          "Unable to save your resume. Please try again before printing.",
       );
     } finally {
       setIsSaving(false);
     }
   };
 
-  // Ctrl/Cmd+P must use the same save/authentication path as the visible Print button.
   printHandlerRef.current = handlePrintPdf;
   useEffect(() => {
     const handleKeyDown = (event) => {
@@ -262,16 +390,22 @@ export default function PrintResume({ resumeInfoId = null }) {
       <header className="print:hidden sticky top-0 z-50 border-b border-slate-200 bg-white/95 px-4 sm:px-6 py-3 backdrop-blur-md shadow-sm">
         <div className="mx-auto flex max-w-7xl flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
           <div>
-            <h1 className="text-sm sm:text-base font-extrabold text-slate-900">Resume Preview &amp; Print</h1>
+            <h1 className="text-sm sm:text-base font-extrabold text-slate-900">
+              Resume Preview &amp; Print
+            </h1>
             <p className="text-[11px] sm:text-xs text-slate-500">
-              Customize accent colors and templates. Your resume is saved when you click Print / PDF.
+              Customize accent colors and templates. Your resume is saved when
+              you click Print / PDF.
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 sm:gap-4 w-full sm:w-auto justify-between sm:justify-end">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto justify-between sm:justify-end">
+            {/* Theme Selector */}
             <div className="flex items-center gap-2 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200">
               <IconPalette size={14} className="text-slate-500 shrink-0" />
-              <span className="text-[11px] font-semibold text-slate-700 hidden md:inline">Theme:</span>
+              <span className="text-[11px] font-semibold text-slate-700 hidden md:inline">
+                Theme:
+              </span>
               <div className="flex items-center gap-1.5">
                 {COLOR_PALETTES.map((color) => (
                   <button
@@ -287,6 +421,7 @@ export default function PrintResume({ resumeInfoId = null }) {
               </div>
             </div>
 
+            {/* Template Selector */}
             <div className="flex items-center gap-1.5 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200">
               <IconLayout size={14} className="text-slate-500 shrink-0" />
               <select
@@ -296,11 +431,63 @@ export default function PrintResume({ resumeInfoId = null }) {
                 aria-label="Resume template"
               >
                 {TEMPLATE_DEFINITIONS.map((template) => (
-                  <option key={template.id} value={template.id}>{template.name}</option>
+                  <option key={template.id} value={template.id}>
+                    {template.name}
+                  </option>
                 ))}
               </select>
             </div>
 
+            {/* Revert Original Button (Only displayed after AI polishing) */}
+            {isPolished && (
+              <button
+                type="button"
+                onClick={handleRevertResume}
+                title="Discard AI modifications and restore your original descriptions"
+                className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 sm:px-3 py-1.5 sm:py-2 text-[11px] sm:text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50 active:scale-95 transition shrink-0"
+              >
+                <IconArrowBackUp size={14} className="text-slate-500" />
+                <span className="hidden sm:inline">Revert Original</span>
+              </button>
+            )}
+
+            {/* ATS Score Check Button */}
+            <button
+              type="button"
+              onClick={handleCheckAts}
+              disabled={isCheckingAts}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 sm:px-3.5 py-1.5 sm:py-2 text-[11px] sm:text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50 active:scale-95 transition shrink-0 disabled:opacity-50"
+            >
+              <IconChartBar size={14} className="text-indigo-600" />
+              <span>ATS Score</span>
+            </button>
+
+            {/* AI Polish Button */}
+            <button
+              type="button"
+              onClick={handlePolishResume}
+              disabled={isPolishing}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 px-3 sm:px-3.5 py-1.5 sm:py-2 text-[11px] sm:text-xs font-semibold text-indigo-700 shadow-sm hover:bg-indigo-100 active:scale-95 transition shrink-0 disabled:opacity-50"
+            >
+              {isPolishing ? (
+                <>
+                  <div className="h-3 w-3 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" />
+                  <span>Polishing...</span>
+                </>
+              ) : showPolishedToast ? (
+                <>
+                  <IconCheck size={14} className="text-emerald-600" />
+                  <span className="text-emerald-700">Polished!</span>
+                </>
+              ) : (
+                <>
+                  <IconSparkles size={14} className="text-indigo-600" />
+                  <span>{isPolished ? "Polish Again" : "Polish"}</span>
+                </>
+              )}
+            </button>
+
+            {/* Direct Print / PDF Button */}
             <button
               type="button"
               onClick={handlePrintPdf}
@@ -312,20 +499,27 @@ export default function PrintResume({ resumeInfoId = null }) {
           </div>
         </div>
         {saveError && (
-          <p role="alert" className="mx-auto mt-2 max-w-7xl rounded-md bg-rose-50 px-3 py-2 text-xs text-rose-700">
+          <p
+            role="alert"
+            className="mx-auto mt-2 max-w-7xl rounded-md bg-rose-50 px-3 py-2 text-xs text-rose-700"
+          >
             {saveError}
           </p>
         )}
       </header>
 
-      <main ref={containerRef} className="flex-1 p-2 sm:p-6 print:p-0 flex justify-center items-start overflow-hidden w-full">
+      <main
+        ref={containerRef}
+        className="flex-1 p-2 sm:p-6 print:p-0 flex justify-center items-start overflow-hidden w-full"
+      >
         <div
           id="printable-resume-area"
           style={{
             width: "794px",
             transform: `scale(${scale})`,
             transformOrigin: "top center",
-            marginBottom: scale < 1 ? `-${Math.round(1123 * (1 - scale))}px` : "0px",
+            marginBottom:
+              scale < 1 ? `-${Math.round(1123 * (1 - scale))}px` : "0px",
           }}
           className="bg-white shadow-2xl print:shadow-none transition-transform duration-150"
         >
@@ -333,10 +527,23 @@ export default function PrintResume({ resumeInfoId = null }) {
         </div>
       </main>
 
+      {/* ATS Evaluation Modal */}
+      <AtsScoreModal
+        isOpen={atsModalOpen}
+        onClose={() => setAtsModalOpen(false)}
+        report={atsReport}
+        isLoading={isCheckingAts}
+      />
+
       <style jsx global>{`
         @media print {
-          body * { visibility: hidden; }
-          #printable-resume-area, #printable-resume-area * { visibility: visible; }
+          body * {
+            visibility: hidden;
+          }
+          #printable-resume-area,
+          #printable-resume-area * {
+            visibility: visible;
+          }
           #printable-resume-area {
             position: absolute;
             left: 0;
@@ -347,7 +554,10 @@ export default function PrintResume({ resumeInfoId = null }) {
             padding: 0 !important;
             box-shadow: none !important;
           }
-          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          body {
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
         }
       `}</style>
     </div>
