@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { IconChevronDown, IconChevronUp } from "@tabler/icons-react";
 
 export const inputClass =
-  "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100";
+  "w-full min-w-0 max-w-full rounded-lg border border-slate-200 bg-white text-sm text-slate-900 shadow-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100";
 
 export const labelClass =
   "mb-1 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500";
@@ -16,17 +16,26 @@ export function Field({
   placeholder = "",
   type = "text",
   isRequired = false,
+  style = {},
+  containerStyle = {},
+  containerClassName = "",
 }) {
-  return (
-    <label className="block">
-      <span className={labelClass}>
-        {/* 1. Only render Icon if it exists */}
-        {Icon && <Icon size={13} />}
+  const isDatePicker = type === "month" || type === "date";
 
-        {/* 2. Group the label text and the asterisk together so flex-gap doesn't separate them */}
+  return (
+    <label
+      className={`block w-full min-w-0 ${containerClassName}`}
+      style={{
+        minWidth: 0,
+        maxWidth: "100%",
+        boxSizing: "border-box",
+        ...containerStyle,
+      }}
+    >
+      <span className={labelClass}>
+        {Icon && <Icon size={13} style={{ flexShrink: 0 }} />}
         <span>
           {label}
-          {/* 3. Use standard conditional rendering (&&) instead of returning an empty span */}
           {isRequired && (
             <span className="is_required ml-1 text-sm font-bold text-red-500 leading-none">
               *
@@ -41,12 +50,26 @@ export function Field({
         placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
         required={isRequired}
+        style={{
+          width: "100%",
+          minWidth: 0,
+          maxWidth: "100%",
+          boxSizing: "border-box",
+          /* Explicit minHeight and padding ensure consistent height and internal spacing */
+          height: "38px",
+          minHeight: "38px",
+          padding: "8px 12px",
+          lineHeight: "20px",
+          display: "block",
+          WebkitAppearance: isDatePicker ? "none" : undefined,
+          MozAppearance: isDatePicker ? "none" : undefined,
+          appearance: isDatePicker ? "none" : undefined,
+          ...style,
+        }}
       />
     </label>
   );
 }
-
-
 
 export function Section({
   title,
@@ -88,7 +111,7 @@ export function Section({
           {open ? <IconChevronUp size={14} /> : <IconChevronDown size={14} />}
         </span>
       </button>
-      {open && <div className="grid gap-3 px-4 pb-5">{children}</div>}
+      {open && <div className="grid gap-3 px-2 lg:px-4 pb-5">{children}</div>}
     </section>
   );
 }

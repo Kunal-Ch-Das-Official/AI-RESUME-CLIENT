@@ -41,6 +41,8 @@ import {
   IconAlertCircle,
   IconX,
   IconInfoCircle,
+  IconEye,
+  IconFileText,
 } from "@tabler/icons-react";
 
 import ResumeRenderer from "@/components/ResumeRenderer";
@@ -161,6 +163,8 @@ export default function ResumeBuilder({
   const [activeTabHydrated, setActiveTabHydrated] = useState(false);
   const [saved, setSaved] = useState(false);
   const [zoom, setZoom] = useState(60);
+  const [mobileZoom, setMobileZoom] = useState(45);
+  const [showMobilePreview, setShowMobilePreview] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const [pendingFiles, setPendingFiles] = useState({});
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -188,12 +192,12 @@ export default function ResumeBuilder({
   const sensors = useSensors(
     useSensor(MouseSensor, {
       activationConstraint: {
-        distance: 6, // 6px movement required before drag starts so normal clicks work
+        distance: 6,
       },
     }),
     useSensor(TouchSensor, {
       activationConstraint: {
-        delay: 200, // Press & hold 200ms on mobile/tablet so horizontal swipe scrolling still works
+        delay: 200,
         tolerance: 5,
       },
     }),
@@ -329,6 +333,20 @@ export default function ResumeBuilder({
     });
   }, [validInitial, resumeData]);
 
+  // Adjust default mobile zoom according to client screen width
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const screenW = window.innerWidth;
+      if (screenW < 768) {
+        const calculated = Math.min(
+          60,
+          Math.max(32, Math.floor((screenW - 32) / 7.94)),
+        );
+        setMobileZoom(calculated);
+      }
+    }
+  }, []);
+
   const update = (path, value) => {
     setResume((current) => {
       const next = cloneResume(current);
@@ -362,7 +380,6 @@ export default function ResumeBuilder({
       .map(({ name }) => tabs.find(([tabName]) => tabName === name));
   }, [resume]);
 
-  // Handle drag end for both Mouse and Touch via @dnd-kit
   const handleDragEnd = (event) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
@@ -449,6 +466,58 @@ export default function ResumeBuilder({
     );
   };
 
+  const renderTabContent = () => (
+    <>
+      {activeTab === "Basics" && (
+        <BasicsTab
+          resume={resume}
+          update={update}
+          setPendingFiles={setPendingFiles}
+        />
+      )}
+      {activeTab === "Experience" && (
+        <ExperienceTab resume={resume} setResume={setResume} update={update} />
+      )}
+      {activeTab === "Education" && (
+        <EducationTab resume={resume} setResume={setResume} />
+      )}
+      {activeTab === "Skills" && (
+        <SkillsTab resume={resume} setResume={setResume} update={update} />
+      )}
+      {activeTab === "Projects" && (
+        <ProjectsTab resume={resume} setResume={setResume} />
+      )}
+      {activeTab === "Certificates" && (
+        <CertificatesTab
+          resume={resume}
+          setResume={setResume}
+          update={update}
+          setPendingFiles={setPendingFiles}
+        />
+      )}
+      {activeTab === "Publications" && (
+        <PublicationsTab
+          resume={resume}
+          setResume={setResume}
+          setPendingFiles={setPendingFiles}
+        />
+      )}
+      {activeTab === "Achievements" && (
+        <AchievementsTab
+          resume={resume}
+          setResume={setResume}
+          setPendingFiles={setPendingFiles}
+        />
+      )}
+      {activeTab === "Additional" && (
+        <AdditionalTab resume={resume} setResume={setResume} update={update} />
+      )}
+      {activeTab === "More" && (
+        <MoreTab resume={resume} update={update} setResume={setResume} />
+      )}
+    </>
+  );
+
   const saveDraft = () => {
     const draft = stripTransientUploadReferences(resume);
     window.localStorage.setItem("airesume-draft", JSON.stringify(draft));
@@ -467,7 +536,6 @@ export default function ResumeBuilder({
     setPendingFiles({});
   };
 
-  //! ==================== Stage Resume Only (no upload, no authentication) =======================
   const handlePreProcessingResume = async () => {
     try {
       setIsProceeding(true);
@@ -479,7 +547,6 @@ export default function ResumeBuilder({
         : validInitial;
       const targetUrl = `/print-resume/draft?template=${encodeURIComponent(targetTemplate)}`;
 
-      // Proceed only stages the current draft locally. It must not upload or authenticate.
       await savePendingResumeDraft({
         resume: { ...resume, templateName: targetTemplate },
         pendingFiles,
@@ -514,8 +581,9 @@ export default function ResumeBuilder({
 
   return (
     <>
-      <div className="no-print min-h-screen bg-slate-100/60 pb-12 lg:pb-0">
-        <div className="sticky top-0 z-35 border-b border-slate-200 bg-white/95 backdrop-blur-xl">
+      <div className="no-print min-h-screen bg-slate-100/60 pb-16 lg:pb-0">
+        {/* Navigation Bar */}
+        <header className="sticky top-0 z-35 border-b border-slate-200 bg-white/95 backdrop-blur-xl">
           <div className="flex flex-wrap items-center justify-between gap-3 px-3 py-2.5 sm:px-6">
             <div className="min-w-0">
               <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-indigo-600 sm:text-[11px]">
@@ -528,7 +596,6 @@ export default function ResumeBuilder({
             </div>
 
             <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-
               <button
                 type="button"
                 onClick={loadDemo}
@@ -556,6 +623,16 @@ export default function ResumeBuilder({
                 <span>{saved ? "Saved" : "Save"}</span>
               </button>
 
+              {/* Mobile-Only Live Resume Preview Button in Navigation Header */}
+              <button
+                type="button"
+                onClick={() => setShowMobilePreview(true)}
+                className="inline-flex lg:hidden items-center gap-1 rounded-lg border border-indigo-200 bg-indigo-50 px-2.5 py-1.5 text-xs font-semibold text-indigo-700 shadow-sm active:scale-95"
+              >
+                <IconEye size={14} className="text-indigo-600" />
+                <span>Preview</span>
+              </button>
+
               <button
                 type="button"
                 onClick={handlePreProcessingResume}
@@ -564,16 +641,50 @@ export default function ResumeBuilder({
                 text-xs font-semibold text-white shadow-md shadow-indigo-500/20 active:scale-95"
               >
                 <IconPrinter size={14} />
-                <span className="hidden sm:inline">Proceed </span>
+                <span className="hidden sm:inline">Proceed</span>
               </button>
             </div>
           </div>
-        </div>
+        </header>
 
-        {/* Desktop Split Workspace */}
+        {/* ========================================================================= */}
+        {/* MOBILE VIEWPORT (< lg): Form First + Floating Live Preview Button         */}
+        {/* ========================================================================= */}
+        <main className="block lg:hidden w-full">
+          {/* Scrollable Tab Ribbon */}
+          <div className="sticky top-[53px] z-20 flex gap-1 overflow-x-auto border-b border-slate-200 bg-white/95 px-3 py-2.5 backdrop-blur scroll-slim shadow-sm">
+            {renderTabs("resume-tabs-mobile")}
+          </div>
+
+          {/* Form Content Area */}
+          <div className="p-0 lg:p-3 pb-28">
+            <div className="mx-auto max-w-2xl bg-white rounded-xl shadow-sm border border-slate-200/80 p-0 lg:p-3 sm:p-5">
+              {renderTabContent()}
+            </div>
+          </div>
+
+          {/* Mobile Bottom Floating Action Bar */}
+          {/* <div className="fixed bottom-4 left-0 right-0 z-30 px-4 flex justify-center pointer-events-none">
+            <button
+              type="button"
+              onClick={() => setShowMobilePreview(true)}
+              className="pointer-events-auto inline-flex items-center gap-2 rounded-full bg-slate-900/95 text-white px-5 py-3 text-sm font-semibold shadow-2xl backdrop-blur-md ring-1 ring-white/20 active:scale-95 transition-transform"
+            >
+              <IconEye size={18} className="text-indigo-400" />
+              <span>Preview Live Resume</span>
+              <span className="ml-1 inline-flex items-center rounded-full bg-indigo-500/30 px-2 py-0.5 text-[10px] font-medium text-indigo-200 border border-indigo-400/20">
+                A4
+              </span>
+            </button>
+          </div> */}
+        </main>
+
+        {/* ========================================================================= */}
+        {/* DESKTOP & IPAD VIEWPORT (>= lg): Split Resizable Layout                   */}
+        {/* ========================================================================= */}
         <div
           ref={editorRef}
-          className="flex w-full min-w-0 overflow-hidden"
+          className="hidden lg:flex w-full min-w-0 overflow-hidden"
           style={{ height: "calc(100vh - 54px)" }}
         >
           <aside
@@ -588,69 +699,7 @@ export default function ResumeBuilder({
               className="scroll-slim overflow-y-auto flex-1 p-2"
               style={{ maxHeight: "calc(100vh - 54px - 49px)" }}
             >
-              {activeTab === "Basics" && (
-                <BasicsTab
-                  resume={resume}
-                  update={update}
-                  setPendingFiles={setPendingFiles}
-                />
-              )}
-              {activeTab === "Experience" && (
-                <ExperienceTab
-                  resume={resume}
-                  setResume={setResume}
-                  update={update}
-                />
-              )}
-              {activeTab === "Education" && (
-                <EducationTab resume={resume} setResume={setResume} />
-              )}
-              {activeTab === "Skills" && (
-                <SkillsTab
-                  resume={resume}
-                  setResume={setResume}
-                  update={update}
-                />
-              )}
-              {activeTab === "Projects" && (
-                <ProjectsTab resume={resume} setResume={setResume} />
-              )}
-              {activeTab === "Certificates" && (
-                <CertificatesTab
-                  resume={resume}
-                  setResume={setResume}
-                  update={update}
-                  setPendingFiles={setPendingFiles}
-                />
-              )}
-              {activeTab === "Publications" && (
-                <PublicationsTab
-                  resume={resume}
-                  setResume={setResume}
-                  setPendingFiles={setPendingFiles}
-                />
-              )}
-              {activeTab === "Achievements" && (
-                <AchievementsTab
-                  resume={resume}
-                  setResume={setResume}
-                  setPendingFiles={setPendingFiles}
-                />
-              )}
-              {activeTab === "Additional" && (
-                <AdditionalTab
-                  resume={resume}
-                  setResume={setResume}
-                  update={update}
-                />
-              )}
-              {activeTab === "More" && (
-                <MoreTab
-                  resume={resume}
-                  update={update}
-                  setResume={setResume}
-                />
-              )}
+              {renderTabContent()}
               <div className="h-16" />
             </div>
           </aside>
@@ -691,6 +740,7 @@ export default function ResumeBuilder({
             />
           </div>
 
+          {/* Desktop Preview Panel */}
           <section className="min-w-0 min-h-0 flex-1 overflow-hidden flex flex-col">
             <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-slate-200 bg-white/90 px-4 py-2.5 backdrop-blur">
               <div className="min-w-0">
@@ -751,6 +801,93 @@ export default function ResumeBuilder({
         </div>
       </div>
 
+      {/* ========================================================================= */}
+      {/* MOBILE LIVE PREVIEW MODAL OVERLAY                                         */}
+      {/* ========================================================================= */}
+      {showMobilePreview && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-slate-900/60 backdrop-blur-sm lg:hidden">
+          {/* Header */}
+          <div className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 shadow-sm">
+            <div className="min-w-0 pr-2">
+              <h3 className="truncate text-sm font-bold text-slate-900">
+                {currentTemplate.name}
+              </h3>
+              <p className="text-[11px] text-slate-500">Live Mobile Preview</p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <div className="flex items-center rounded-lg border border-slate-200 bg-slate-50 p-0.5">
+                <button
+                  type="button"
+                  className="flex h-7 w-7 items-center justify-center rounded text-slate-700 hover:bg-slate-200"
+                  onClick={() => setMobileZoom((z) => Math.max(30, z - 5))}
+                >
+                  <IconMinus size={13} />
+                </button>
+                <span className="min-w-[32px] text-center text-[11px] font-semibold text-slate-700">
+                  {mobileZoom}%
+                </span>
+                <button
+                  type="button"
+                  className="flex h-7 w-7 items-center justify-center rounded text-slate-700 hover:bg-slate-200"
+                  onClick={() => setMobileZoom((z) => Math.min(80, z + 5))}
+                >
+                  <IconPlus size={13} />
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowMobilePreview(false)}
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 active:scale-95"
+              >
+                <IconX size={18} />
+              </button>
+            </div>
+          </div>
+
+          {/* Render Scroll Area */}
+          <div className="flex-1 overflow-auto bg-slate-200/80 p-3 flex justify-center items-start">
+            <div
+              style={{
+                width: `${794 * (mobileZoom / 100)}px`,
+              }}
+              className="transition-all duration-150"
+            >
+              <div
+                style={{
+                  transform: `scale(${mobileZoom / 100})`,
+                  transformOrigin: "top left",
+                  width: "794px",
+                }}
+                className="shadow-2xl rounded"
+              >
+                <ResumeRenderer resumeData={resume} />
+              </div>
+            </div>
+          </div>
+
+          {/* Footer Back Button */}
+          <div className="border-t border-slate-200 bg-white p-3 flex items-center justify-between gap-3">
+            <button
+              type="button"
+              onClick={() => setShowMobilePreview(false)}
+              className="flex-1 rounded-xl border border-slate-300 py-2.5 text-center text-xs font-semibold text-slate-700 active:bg-slate-50"
+            >
+              Back to Editing Form
+            </button>
+            <button
+              type="button"
+              onClick={handlePreProcessingResume}
+              className="flex-1 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 py-2.5 text-center text-xs font-semibold text-white shadow-md active:scale-95"
+            >
+              Proceed to Export
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Hidden Print Target */}
       <div id="resume-print-area" className="hidden print:block">
         <ResumeRenderer resumeData={resume} />
       </div>
@@ -972,7 +1109,8 @@ export default function ResumeBuilder({
                   }}
                 >
                   Please log in to continue. Your resume draft has been saved
-                  temporarily and will not be uploaded until you choose Print / PDF.
+                  temporarily and will not be uploaded until you choose Print /
+                  PDF.
                 </p>
               </div>
             </div>
@@ -990,7 +1128,10 @@ export default function ResumeBuilder({
                 onClick={() => {
                   setShowLoginModal(false);
                   if (pendingRedirectUrl) {
-                    window.sessionStorage.setItem("airesume-auth-return-to", pendingRedirectUrl);
+                    window.sessionStorage.setItem(
+                      "airesume-auth-return-to",
+                      pendingRedirectUrl,
+                    );
                   }
                   window.location.href = "/sign-in";
                 }}

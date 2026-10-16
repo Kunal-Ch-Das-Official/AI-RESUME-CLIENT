@@ -23,13 +23,9 @@ import { TEMPLATE_DEFINITIONS } from "@/lib/resume-data";
 import TextEditor from "@/components/utils/form/TextEditor";
 
 /**
-
  * Convert the rich-text editor HTML into plain text before sending
-
  * the user's draft to the AI service.
-
  */
-
 function htmlToPlainText(html = "") {
   const source = String(html);
 
@@ -54,27 +50,18 @@ function htmlToPlainText(html = "") {
 function plainTextToEditorHtml(text = "") {
   return String(text)
     .trim()
-
     .split(/\n{2,}/)
-
     .map((paragraph) => {
       const safeText = paragraph
-
         .replace(/&/g, "&amp;")
-
         .replace(/</g, "&lt;")
-
         .replace(/>/g, "&gt;")
-
         .replace(/"/g, "&quot;")
-
         .replace(/'/g, "&#39;")
-
         .replace(/\n/g, "<br>");
 
       return `<p>${safeText}</p>`;
     })
-
     .join("");
 }
 
@@ -87,23 +74,16 @@ export default function BasicsTab({ resume, update, setPendingFiles }) {
     ) || TEMPLATE_DEFINITIONS[0];
 
   // Custom key-value attributes.
-
   const [customKey, setCustomKey] = useState("");
-
   const [customValue, setCustomValue] = useState("");
-
   const [customPairs, setCustomPairs] = useState(
     () => resume.customAttributes || [],
   );
 
   // AI profile-summary assistant state.
-
   const [aiLoading, setAiLoading] = useState(false);
-
   const [aiError, setAiError] = useState("");
-
   const [summaryOptions, setSummaryOptions] = useState([]);
-
   const [activeSummaryIndex, setActiveSummaryIndex] = useState(null);
 
   const currentDraft = htmlToPlainText(resume.profileSummary?.objective || "");
@@ -112,13 +92,9 @@ export default function BasicsTab({ resume, update, setPendingFiles }) {
     currentDraft.length > 0 && currentTargetRole.length > 0 && !aiLoading;
 
   /**
-
    * Avatar upload.
-
    * The actual file remains outside the resume JSON.
-
    */
-
   const handleAvatarUpload = (event) => {
     const file = event.target.files?.[0];
 
@@ -128,15 +104,12 @@ export default function BasicsTab({ resume, update, setPendingFiles }) {
 
     setPendingFiles?.((current) => ({
       ...current,
-
       avatar: file,
     }));
 
     update("avatar", {
       url: previewUrl,
-
       key: `local-${Date.now()}`,
-
       file,
     });
   };
@@ -144,15 +117,12 @@ export default function BasicsTab({ resume, update, setPendingFiles }) {
   const removeAvatar = () => {
     setPendingFiles?.((current) => {
       const next = { ...current };
-
       delete next.avatar;
-
       return next;
     });
 
     update("avatar", {
       url: "",
-
       key: "",
     });
 
@@ -162,37 +132,23 @@ export default function BasicsTab({ resume, update, setPendingFiles }) {
   };
 
   /**
-
    * Clear suggestions when the original draft changes.
-
    * This prevents applying a suggestion generated from outdated text.
-
    */
-
   const handleSummaryChange = (html) => {
     update("profileSummary.objective", html);
-
     setSummaryOptions([]);
-
     setActiveSummaryIndex(null);
-
     setAiError("");
   };
 
   /**
-
    * Generate five ATS-friendly profile-summary alternatives.
-
    *
-
    * Privacy:
-
    * Only the profile draft and target role are sent.
-
    * Other personal information and resume tabs are not included.
-
    */
-
   const handleGenerateSummary = async () => {
     if (aiLoading) return;
 
@@ -210,7 +166,6 @@ export default function BasicsTab({ resume, update, setPendingFiles }) {
       setAiError(
         "Write a little about your professional background, skills, or experience first.",
       );
-
       return;
     }
 
@@ -218,32 +173,24 @@ export default function BasicsTab({ resume, update, setPendingFiles }) {
       setAiError(
         "Please keep your initial profile draft under 5,000 characters.",
       );
-
       return;
     }
 
     setAiLoading(true);
-
     setAiError("");
-
     setSummaryOptions([]);
-
     setActiveSummaryIndex(null);
 
     try {
       const response = await fetch(
         process.env.NEXT_PUBLIC_PROFILE_SUMMARY_SUGGESTION_URL,
-
         {
           method: "POST",
-
           headers: {
             "Content-Type": "application/json",
           },
-
           body: JSON.stringify({
             draft,
-
             target_role: targetRole,
           }),
         },
@@ -266,13 +213,11 @@ export default function BasicsTab({ resume, update, setPendingFiles }) {
       }
 
       const validOptions = result.options
-
         .filter(
           (option) =>
             typeof option?.summary === "string" &&
             option.summary.trim().length > 0,
         )
-
         .slice(0, 5);
 
       if (validOptions.length < 4) {
@@ -295,13 +240,9 @@ export default function BasicsTab({ resume, update, setPendingFiles }) {
   };
 
   /**
-
    * Apply the selected alternative to the existing rich-text editor.
-
    * No other resume field is changed.
-
    */
-
   const handleUseSummary = (option) => {
     if (typeof option?.summary !== "string" || !option.summary.trim()) {
       return;
@@ -314,64 +255,49 @@ export default function BasicsTab({ resume, update, setPendingFiles }) {
   };
 
   /**
-
    * Add a custom attribute.
-
    */
-
   const handleAddPair = () => {
     const key = customKey.trim();
-
     const value = customValue.trim();
 
     if (!key || !value) return;
 
     const pair = {
       id: `custom-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-
       key,
-
       value,
     };
 
     const nextPairs = [...(resume.customAttributes || []), pair];
 
     setCustomPairs(nextPairs);
-
     update("customAttributes", nextPairs);
-
     setCustomKey("");
-
     setCustomValue("");
   };
 
   /**
-
    * Remove a custom attribute.
-
    */
-
   const handleRemovePair = (id) => {
     const nextPairs = (resume.customAttributes || []).filter(
       (item) => item.id !== id,
     );
 
     setCustomPairs(nextPairs);
-
     update("customAttributes", nextPairs);
   };
 
   return (
     <>
       {/* Personal details */}
-
       <Section
         title="Personal details"
         required
         description="Core contact info displayed at top"
       >
         {/* Avatar is shown only for templates that support it. */}
-
         {activeTemplateDef.hasAvatar && (
           <div className="mb-2 rounded-xl border border-indigo-100 bg-indigo-50/40 p-3.5">
             <span className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-indigo-900">
@@ -381,16 +307,65 @@ export default function BasicsTab({ resume, update, setPendingFiles }) {
 
             <div className="flex items-center gap-4">
               {resume.avatar?.url ? (
-                <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-full border-2 border-indigo-400 shadow-sm">
+                <div
+                  style={{
+                    width: "64px",
+                    height: "64px",
+                    minWidth: "64px",
+                    minHeight: "64px",
+                    maxWidth: "64px",
+                    maxHeight: "64px",
+                    flexShrink: 0,
+                    overflow: "hidden",
+                    borderRadius: "9999px",
+                    border: "2px solid #818cf8",
+                  }}
+                  className="relative shadow-sm"
+                >
                   <img
                     src={resume.avatar.url}
                     alt="Avatar preview"
-                    className="h-full w-full object-cover"
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                      display: "block",
+                    }}
                   />
                 </div>
               ) : (
-                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border border-dashed border-indigo-300 bg-white text-indigo-400">
-                  <IconPhoto size={24} />
+                <div
+                  style={{
+                    width: "64px",
+                    height: "64px",
+                    minWidth: "64px",
+                    minHeight: "64px",
+                    maxWidth: "64px",
+                    maxHeight: "64px",
+                    flexShrink: 0,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    overflow: "hidden",
+                    borderRadius: "9999px",
+                    border: "1px dashed #a5b4fc",
+                    backgroundColor: "#ffffff",
+                    color: "#818cf8",
+                  }}
+                >
+                  <IconPhoto
+                    size={24}
+                    style={{
+                      width: "24px",
+                      height: "24px",
+                      minWidth: "24px",
+                      minHeight: "24px",
+                      maxWidth: "24px",
+                      maxHeight: "24px",
+                      flexShrink: 0,
+                      display: "block",
+                    }}
+                  />
                 </div>
               )}
 
@@ -409,7 +384,6 @@ export default function BasicsTab({ resume, update, setPendingFiles }) {
                   className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-indigo-700"
                 >
                   <IconUpload size={14} />
-
                   {resume.avatar?.url ? "Change Photo" : "Upload Photo"}
                 </button>
 
@@ -442,7 +416,6 @@ export default function BasicsTab({ resume, update, setPendingFiles }) {
             value={resume.basicInfo?.position}
             onChange={(value) => {
               update("basicInfo.position", value);
-
               update("profileSummary.subject", value);
             }}
             placeholder="Senior Backend Engineer"
@@ -470,7 +443,6 @@ export default function BasicsTab({ resume, update, setPendingFiles }) {
       </Section>
 
       {/* Profile summary and AI assistant */}
-
       <Section
         title="Profile summary"
         description="Write a rough draft and let AI organize it into a professional summary."
@@ -489,7 +461,6 @@ export default function BasicsTab({ resume, update, setPendingFiles }) {
           />
 
           {/* AI assistant introduction and generate button */}
-
           <div className="rounded-xl border border-indigo-100 bg-gradient-to-br from-indigo-50/80 to-violet-50/60 p-3">
             <div className="flex items-start gap-2.5">
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-indigo-600 shadow-sm ring-1 ring-indigo-100">
@@ -541,7 +512,6 @@ export default function BasicsTab({ resume, update, setPendingFiles }) {
           </div>
 
           {/* Request error */}
-
           {aiError && (
             <div
               role="alert"
@@ -552,7 +522,6 @@ export default function BasicsTab({ resume, update, setPendingFiles }) {
           )}
 
           {/* Loading state */}
-
           {aiLoading && (
             <div
               role="status"
@@ -569,9 +538,7 @@ export default function BasicsTab({ resume, update, setPendingFiles }) {
 
               <div className="space-y-2">
                 <div className="h-3 w-full animate-pulse rounded bg-slate-100" />
-
                 <div className="h-3 w-5/6 animate-pulse rounded bg-slate-100" />
-
                 <div className="h-3 w-2/3 animate-pulse rounded bg-slate-100" />
               </div>
 
@@ -582,7 +549,6 @@ export default function BasicsTab({ resume, update, setPendingFiles }) {
           )}
 
           {/* AI-generated summary options */}
-
           {summaryOptions.length > 0 && (
             <div className="space-y-3">
               <div className="flex items-center justify-between gap-2">
@@ -652,7 +618,6 @@ export default function BasicsTab({ resume, update, setPendingFiles }) {
       </Section>
 
       {/* Location and links */}
-
       <Section
         title="Location & links"
         description="Location and external URLs"
@@ -706,7 +671,7 @@ export default function BasicsTab({ resume, update, setPendingFiles }) {
           icon={IconBrandLinkedin}
           value={resume.contactInfo?.linkedin}
           onChange={(value) => update("contactInfo.linkedin", value)}
-          placeholder="https\://linkedin.com/in/aarav-mehta"
+          placeholder="https://linkedin.com/in/aarav-mehta"
         />
 
         <Field
@@ -714,7 +679,7 @@ export default function BasicsTab({ resume, update, setPendingFiles }) {
           icon={IconBrandGithub}
           value={resume.contactInfo?.github}
           onChange={(value) => update("contactInfo.github", value)}
-          placeholder="https\://github.com/aarav-mehta"
+          placeholder="https://github.com/aarav-mehta"
         />
 
         <Field
@@ -722,11 +687,10 @@ export default function BasicsTab({ resume, update, setPendingFiles }) {
           icon={IconWorld}
           value={resume.contactInfo?.portfolio}
           onChange={(value) => update("contactInfo.portfolio", value)}
-          placeholder="https\://aaravmehta.dev"
+          placeholder="https://aaravmehta.dev"
         />
 
         {/* Custom key-value attributes */}
-
         <section
           id="key_value"
           className="mt-4 rounded-xl border border-slate-200 bg-slate-50/60 p-4 shadow-sm"
