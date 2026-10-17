@@ -11,6 +11,7 @@ import {
 } from "@tabler/icons-react";
 import { Field, Section } from "../controls/FormControls";
 import TextEditor from "../../utils/form/TextEditor";
+import ButtonLoader from "@/components/utils/button-loader/ButtonLoader";
 
 function escapeHtml(value = "") {
   return String(value)
@@ -620,9 +621,7 @@ export default function AdditionalTab({ resume, setResume, update }) {
                           >
                             {aiState.loading ? (
                               <>
-                                <IconLoader2
-                                  size={17}
-                                  className="animate-spin"
+                                <ButtonLoader
                                 />
                                 Polishing contribution descriptions...
                               </>

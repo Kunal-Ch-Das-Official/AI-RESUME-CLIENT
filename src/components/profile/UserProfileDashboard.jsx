@@ -10,10 +10,13 @@ import {
   IconChevronRight,
   IconSparkles,
   IconAlertCircle,
+  IconCoins,
+  IconCalendar,
 } from "@tabler/icons-react";
 import { Slot } from "@radix-ui/react-slot";
 import "./UserProfileDashboard.css";
 import { useRouter } from "next/navigation";
+import { useAuthStore } from "@/store/auth.store";
 
 // Import the tab components
 import ProfileDetailsTab from "./tabs/ProfileDetailsTab";
@@ -64,12 +67,35 @@ const navItems = [
   },
 ];
 
+function firstAvailable(...values) {
+  return values.find(
+    (value) =>
+      value !== undefined && value !== null && String(value).trim() !== "",
+  );
+}
+
+function formatPlanDate(value) {
+  if (!value) return "Not set";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return new Intl.DateTimeFormat(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  }).format(date);
+}
+
 export default function UserProfileDashboard({
   userData,
   preview = false,
   onManageSubscription,
 }) {
   const router = useRouter();
+  const clearAuth = useAuthStore((state) => state.clearAuth);
+  const authUser = useAuthStore((state) => state.user);
+  const storeResumeCredits = useAuthStore((state) => state.resumeCredits);
+  const storeActivePlan = useAuthStore((state) => state.activePlan);
+  const storeMyResume = useAuthStore((state) => state.myResume);
   const [activeTab, setActiveTab] = useState("profile");
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -80,15 +106,48 @@ export default function UserProfileDashboard({
   });
   const [message, setMessage] = useState({ type: "", text: "" });
 
-  // The auth endpoint may return the user directly or wrap it in `data`/`user`.
-  // Normalize the response before reading `myResume`, otherwise the tab receives
-  // no IDs and incorrectly displays an empty state.
-  const user = userData?.data?.user ?? userData?.user ?? userData?.data ?? userData ?? {
-    _id: "",
-    userName: "",
-    emailId: "",
-    fullName: "User",
-    myResume: [],
+  // Zustand auth state is the canonical source. Keep userData as a fallback
+  // for callers that render this dashboard outside the normal ProfileWrapper.
+  const propUser =
+    userData?.data?.user ??
+    userData?.user ??
+    userData?.data ??
+    userData ??
+    {};
+
+  const user = {
+    ...propUser,
+    ...(authUser ?? {}),
+    id: authUser?.id ?? propUser?.id ?? authUser?._id ?? propUser?._id ?? "",
+    _id: authUser?._id ?? propUser?._id ?? authUser?.id ?? propUser?.id ?? "",
+    userName: authUser?.userName || propUser?.userName || propUser?.username || "",
+    userEmail:
+      authUser?.userEmail ||
+      authUser?.emailId ||
+      propUser?.userEmail ||
+      propUser?.emailId ||
+      propUser?.email ||
+      "",
+    emailId:
+      authUser?.emailId ||
+      authUser?.userEmail ||
+      propUser?.emailId ||
+      propUser?.userEmail ||
+      propUser?.email ||
+      "",
+    fullName: authUser?.fullName || propUser?.fullName || propUser?.full_name || "",
+    resumeCredits:
+      authUser?.resumeCredits ?? storeResumeCredits ?? propUser?.resumeCredits ??
+      propUser?.tokens ?? propUser?.availableTokens ?? 0,
+    activePlan:
+      authUser?.activePlan ?? storeActivePlan ?? propUser?.activePlan ??
+      propUser?.planName ?? propUser?.currentPlan ?? "",
+    myResume:
+      Array.isArray(authUser?.myResume) ? authUser.myResume :
+      Array.isArray(storeMyResume) ? storeMyResume :
+      Array.isArray(propUser?.myResume) ? propUser.myResume :
+      Array.isArray(propUser?.resumes) ? propUser.resumes :
+      Array.isArray(propUser?.resumeIds) ? propUser.resumeIds : [],
   };
 
   const initials =
@@ -99,6 +158,59 @@ export default function UserProfileDashboard({
       .join("")
       .toUpperCase()
       .slice(0, 2) || "U";
+
+  // Read tokens and plan details from the current authenticated user object.
+  const availableTokens = Number(
+    firstAvailable(
+      authUser?.resumeCredits,
+      storeResumeCredits,
+      user.resumeCredits,
+      user.tokens,
+      user.availableTokens,
+      user.creditsAvailable,
+      user.credits,
+      0,
+    ),
+  );
+  const tokenCount = Number.isFinite(availableTokens) ? availableTokens : 0;
+  const tokenIsHealthy = tokenCount > 2;
+
+  const activePlan = firstAvailable(
+    storeActivePlan,
+    authUser?.activePlan,
+    user.activePlan,
+    user.planName,
+    user.currentPlan,
+    user.planId,
+  );
+
+  const planName =
+    (activePlan && typeof activePlan === "object"
+      ? firstAvailable(activePlan.name, activePlan.planName, activePlan.title, activePlan.planId)
+      : activePlan) ??
+    firstAvailable(
+      user.plan?.name,
+      user.plan?.planName,
+      user.subscription?.planName,
+      user.subscription?.plan?.name,
+      "Not available",
+    );
+
+  const planStatus = firstAvailable(
+    user.subscriptionStatus,
+    user.subscription?.status,
+    user.planStatus,
+    user.subscription?.state,
+    "Not available",
+  );
+
+  const planExpiry = firstAvailable(
+    user.planExpiresAt,
+    user.subscriptionExpiresAt,
+    user.subscription?.expiresAt,
+    user.currentPeriodEnd,
+    user.subscription?.currentPeriodEnd,
+  );
 
   const activeItem =
     navItems.find((item) => item.id === activeTab) ?? navItems[0];
@@ -125,7 +237,8 @@ export default function UserProfileDashboard({
         credentials: "include",
       });
       if (!response.ok) throw new Error("Unable to log out. Please try again.");
-      router.push("/sign-in");
+      clearAuth();
+      router.replace("/sign-in");
     } catch (error) {
       setMessage({
         type: "error",
@@ -152,15 +265,18 @@ export default function UserProfileDashboard({
     }
     try {
       setIsUpdating(true);
-      const response = await fetch(process.env.NEXT_PUBLIC_UPDATE_PASSWORD_URL, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          currentPassword: passwordForm.currentPassword,
-          newPassword: passwordForm.newPassword,
-        }),
-        credentials: "include",
-      });
+      const response = await fetch(
+        process.env.NEXT_PUBLIC_UPDATE_PASSWORD_URL,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            currentPassword: passwordForm.currentPassword,
+            newPassword: passwordForm.newPassword,
+          }),
+          credentials: "include",
+        },
+      );
       const data = await response.json();
       if (!response.ok)
         throw new Error(data.message || "Failed to update password.");
@@ -199,6 +315,7 @@ export default function UserProfileDashboard({
           <IconChevronRight size={13} />
           <span>Settings</span>
         </div>
+
         <header className="account-identity">
           <div className="identity-person">
             <div className="account-avatar">
@@ -207,14 +324,18 @@ export default function UserProfileDashboard({
             </div>
             <div className="identity-copy">
               <div className="identity-title">
-                <h1>{user.fullName || user.full_name || user.userName || "User"}</h1>
+                <h1>
+                  {user.fullName || user.full_name || user.userName || "User"}
+                </h1>
                 <span className="premium-badge">
                   <IconSparkles size={13} />
-                  Premium
+                  {planName === "Not available" ? "Membership" : planName}
                 </span>
               </div>
-              <p>@{user.userName}</p>
-              <span className="identity-email">{user.userEmail || user.emailId || user.email || ""}</span>
+              <p>@{user.userName || user.username || "user"}</p>
+              <span className="identity-email">
+                {user.userEmail || user.emailId || user.email || ""}
+              </span>
             </div>
           </div>
           <Button
@@ -227,6 +348,56 @@ export default function UserProfileDashboard({
             {isLoggingOut ? "Logging out…" : "Log out"}
           </Button>
         </header>
+
+        {/* Token and plan overview */}
+        <section
+          className="account-overview"
+          aria-label="Token and plan overview"
+        >
+          <div className="account-overview-card">
+            <span className="account-overview-icon">
+              <IconCoins size={21} />
+            </span>
+            <div className="account-overview-copy">
+              <span>Available tokens</span>
+              <strong
+                className={
+                  tokenIsHealthy
+                    ? "token-count token-count--good"
+                    : "token-count token-count--low"
+                }
+              >
+                {tokenCount}
+              </strong>
+              <small>
+                {tokenIsHealthy ? "Healthy balance" : "Low balance"}
+              </small>
+            </div>
+          </div>
+
+          <div className="account-overview-card">
+            <span className="account-overview-icon">
+              <IconSparkles size={21} />
+            </span>
+            <div className="account-overview-copy">
+              <span>Current plan</span>
+              <strong>{String(planName)}</strong>
+              <small>{String(planStatus)}</small>
+            </div>
+          </div>
+
+          <div className="account-overview-card">
+            <span className="account-overview-icon">
+              <IconCalendar size={21} />
+            </span>
+            <div className="account-overview-copy">
+              <span>Plan renewal / expiry</span>
+              <strong>{formatPlanDate(planExpiry)}</strong>
+              <small>Based on your account data</small>
+            </div>
+          </div>
+        </section>
+
         <div className="account-workspace">
           <aside className="account-sidebar">
             <p className="section-eyebrow">ACCOUNT SETTINGS</p>
@@ -266,6 +437,7 @@ export default function UserProfileDashboard({
               <span className="status-dot" />
             </div>
           </aside>
+
           <section className="account-content" aria-labelledby="content-title">
             <header className="content-heading">
               <div>
@@ -277,6 +449,7 @@ export default function UserProfileDashboard({
                 <activeItem.icon size={25} stroke={1.5} />
               </span>
             </header>
+
             {message.text && (
               <div
                 className={`account-message ${message.type}`}
@@ -291,7 +464,9 @@ export default function UserProfileDashboard({
             {activeTab === "resumes" && (
               <MyResumeTab
                 resumeAction={resumeAction}
-                resumeIds={user.myResume ?? user.resumes ?? user.resumeIds ?? []}
+                resumeIds={
+                  user.myResume ?? user.resumes ?? user.resumeIds ?? []
+                }
               />
             )}
             {activeTab === "payments" && (
@@ -310,6 +485,7 @@ export default function UserProfileDashboard({
             )}
           </section>
         </div>
+
         <footer className="account-page-footer">
           <IconLock size={12} />
           <span>A little peace of mind. Your account, protected.</span>

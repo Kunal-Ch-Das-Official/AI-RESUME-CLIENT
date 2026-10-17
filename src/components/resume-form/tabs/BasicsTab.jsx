@@ -21,6 +21,7 @@ import { Field, Section } from "../controls/FormControls";
 import { TEMPLATE_DEFINITIONS } from "@/lib/resume-data";
 
 import TextEditor from "@/components/utils/form/TextEditor";
+import ButtonLoader from "@/components/utils/button-loader/ButtonLoader";
 
 /**
  * Convert the rich-text editor HTML into plain text before sending
@@ -492,7 +493,7 @@ export default function BasicsTab({ resume, update, setPendingFiles }) {
             >
               {aiLoading ? (
                 <>
-                  <IconLoader2 size={17} className="animate-spin" />
+                  <ButtonLoader />
                   Generating summary options...
                 </>
               ) : (

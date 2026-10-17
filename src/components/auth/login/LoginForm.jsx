@@ -4,9 +4,11 @@ import style from "../authStyle.module.css";
 import { useRouter } from "next/navigation";
 import PageLoader from "@/components/utils/page-loader/PageLoader";
 import Link from "next/link";
+import { useAuthStore } from "@/store/auth.store";
 
-export default function LoginForm({ userId, token }) {
+export default function LoginForm() {
   const router = useRouter();
+  const refreshUser = useAuthStore((state) => state.refreshUser);
 
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
@@ -34,6 +36,7 @@ export default function LoginForm({ userId, token }) {
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include",
         body: JSON.stringify(payload),
       });
 
@@ -42,6 +45,15 @@ export default function LoginForm({ userId, token }) {
       if (!response.ok) {
         throw new Error(
           data.message || "Failed to log in. Please check your credentials.",
+        );
+      }
+
+      // The login endpoint establishes the session. Fetch the canonical user
+      // profile now and populate Zustand + sessionStorage before navigating.
+      const loggedInUser = await refreshUser({ force: true });
+      if (!loggedInUser) {
+        throw new Error(
+          "Login succeeded, but we could not validate your session. Please try again.",
         );
       }
 

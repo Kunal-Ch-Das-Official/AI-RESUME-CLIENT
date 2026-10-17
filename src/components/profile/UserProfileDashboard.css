@@ -1287,3 +1287,91 @@ body {
     print-color-adjust: exact !important;
   }
 }
+
+/* Token and plan overview styles (merged from account-overview.css) */
+/* Add these styles to UserProfileDashboard.css */
+.account-overview {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin: 24px 0 24px;
+}
+
+.account-overview-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 5px 18px rgba(15, 23, 42, 0.035);
+}
+
+.account-overview-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 42px;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: #eef2ff;
+  color: #4f46e5;
+}
+
+.account-overview-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.account-overview-copy > span {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.account-overview-copy > strong {
+  overflow-wrap: anywhere;
+  color: #0f172a;
+  font-size: 16px;
+  font-weight: 750;
+  line-height: 1.35;
+}
+
+.account-overview-copy > small {
+  color: #64748b;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+.account-overview-copy > .token-count--good {
+  color: #15803d;
+  font-size: 22px;
+}
+
+.account-overview-copy > .token-count--low {
+  color: #dc2626;
+  font-size: 22px;
+}
+
+@media (max-width: 900px) {
+  .account-overview {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .account-overview {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+    margin-bottom: 18px;
+  }
+
+  .account-overview-card {
+    padding: 13px;
+  }
+}

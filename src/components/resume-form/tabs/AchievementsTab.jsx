@@ -14,6 +14,7 @@ import {
 } from "@tabler/icons-react";
 import { Field, Section } from "../controls/FormControls";
 import TextEditor from "@/components/utils/form/TextEditor";
+import ButtonLoader from "@/components/utils/button-loader/ButtonLoader";
 
 function escapeHtml(value = "") {
   return String(value)
@@ -515,7 +516,7 @@ export default function AchievementsTab({
                         >
                           {aiState.loading ? (
                             <>
-                              <IconLoader2 size={17} className="animate-spin" />
+                              <ButtonLoader />
                               Polishing achievement descriptions...
                             </>
                           ) : (

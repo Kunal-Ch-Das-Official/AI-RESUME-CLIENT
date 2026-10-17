@@ -14,6 +14,7 @@ import {
 } from "@tabler/icons-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
+import { useAuthStore } from "@/store/auth.store";
 import Image from "next/image";
 import brandLogo from "../../../public/resume_craft_logo.webp";
 
@@ -42,6 +43,14 @@ const LINKS = [
 
 export default function Navbar() {
   const pathname = usePathname();
+  const user = useAuthStore((state) => state.user);
+  const isLoggedIn = Boolean(user?.id || user?._id);
+  const username = user?.userName || user?.fullName || "Account";
+  const availableTokens = Number(user?.resumeCredits ?? user?.tokens ?? 0);
+  const tokenColor =
+    availableTokens > 2
+      ? "token_viewer_green"
+      : "token_viewer_red";
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
@@ -138,10 +147,21 @@ export default function Navbar() {
           <Link
             href="/account"
             className="hidden sm:inline-flex items-center gap-2 rounded-xl bg-green-700 px-4 py-2.5
-             text-sm font-semibold text-black shadow-lg shadow-slate-900/20
+             text-sm font-semibold text-black shadow shadow-slate-900/20
              transition-all hover:bg-green-800 hover:shadow-slate-900/30 active:scale-[0.97]"
           >
-            Account
+            <span className="max-w-28 truncate">
+              {isLoggedIn ? username : "Account"}
+            </span>
+            {isLoggedIn && (
+              <span
+                className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-xs font-bold ring-1 ${tokenColor}`}
+                title={`${availableTokens} tokens available`}
+                aria-label={`${availableTokens} tokens available`}
+              >
+                {availableTokens} tokens
+              </span>
+            )}
             <IconUserKey size={15} />
           </Link>
 
@@ -173,7 +193,8 @@ export default function Navbar() {
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
-            className="lg:hidden mx-3 mb-3 rounded-2xl border border-slate-200 bg-white/95 p-2 shadow-xl backdrop-blur-xl"
+            className="lg:hidden mx-3 mb-3 rounded-2xl border border-slate-200
+            bg-white/95 p-2 shadow-xl backdrop-blur-xl"
           >
             {LINKS.map(({ name, href, icon: Icon }) => {
               const active = pathname.startsWith(href);
@@ -202,8 +223,21 @@ export default function Navbar() {
               bg-white px-3 py-2.5 text-sm font-semibold text-black shadow-lg shadow-slate-900/20
               hover:shadow-slate-900/30 border border-slate-900/30 mb-2"
             >
-              Account
-              <IconUserKey size={16} />
+              <span className="min-w-0 truncate">
+                {isLoggedIn ? username : "Account"}
+              </span>
+              <span className="ml-2 flex shrink-0 items-center gap-2">
+                {isLoggedIn && (
+                  <span
+                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-bold ring-1 ${tokenColor}`}
+                    title={`${availableTokens} tokens available`}
+                    aria-label={`${availableTokens} tokens available`}
+                  >
+                    {availableTokens} tokens
+                  </span>
+                )}
+                <IconUserKey size={16} />
+              </span>
             </Link>
 
             <Link

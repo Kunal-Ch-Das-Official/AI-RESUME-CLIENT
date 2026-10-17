@@ -5163,3 +5163,16 @@ button { cursor: pointer; }
 .clean-editor li {
   margin-bottom: 0.25rem !important;
 }
+
+
+.token_viewer_green {
+  background-color: rgb(71, 234, 71);
+  color: #000;
+  border: 1px solid rgb(89, 174, 89);
+}
+
+.token_viewer_red {
+  background-color: rgb(234, 71, 71);
+  color: #fff;
+  border: 1px solid rgb(194, 0, 0);
+}

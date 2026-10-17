@@ -1,5 +1,6 @@
 import "./globals.css";
 import Navbar from "@/components/header/Navbar";
+import AuthInitializer from "@/components/auth/AuthInitializer";
 import Footer from "@/components/Footer";
 import Adsense from "@/components/adsense/Adsense";
 
@@ -37,11 +38,12 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en" data-scroll-behavior="smooth">
-      <Adsense pid={process.env.NEXT_PIBLIC_AD_SENSE_ID_CONFIG} />
+      <Adsense pid={process.env.NEXT_PUBLIC_AD_SENSE_ID_CONFIG} />
       <body
         suppressHydrationWarning
         className="min-h-screen bg-white font-sans text-slate-900 antialiased selection:bg-indigo-500 selection:text-white"
       >
+        <AuthInitializer />
         <Navbar />
         <div className="pt-16">{children}</div>
         <Footer />
