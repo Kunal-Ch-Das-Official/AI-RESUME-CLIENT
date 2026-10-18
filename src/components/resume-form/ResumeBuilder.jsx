@@ -67,6 +67,7 @@ import PublicationsTab from "./tabs/PublicationsTab";
 import AchievementsTab from "./tabs/AchievementsTab";
 import PageLoader from "../utils/page-loader/PageLoader";
 import { savePendingResumeDraft } from "@/components/utils/resumeDraftStorage";
+import ProductTour from "@/components/product-tour/ProductTour";
 
 const tabs = [
   ["Basics", IconUserCircle],
@@ -93,6 +94,119 @@ const PRIORITY_TAB_CONFIG = {
 
 const PRIORITY_TAB_NAMES = Object.keys(PRIORITY_TAB_CONFIG);
 const ACTIVE_TAB_STORAGE_KEY = "airesume-active-tab";
+
+const RESUME_BUILDER_TOUR_STEPS = [
+  {
+    element: '[data-tour="builder-actions"]',
+    popover: {
+      title: "Your resume workspace",
+      description:
+        "Start with a sample, clear the form, save a local draft, or proceed to the final resume page whenever you are ready.",
+      side: "bottom",
+      align: "end",
+    },
+  },
+  {
+    element: '[data-tour="builder-tabs"]',
+    popover: {
+      title: "Move between resume sections",
+      description:
+        "Open Basics, Experience, Education, Skills, Projects, Certificates, Publications, Achievements, Additional, and More to edit each part of your resume.",
+      side: "bottom",
+      align: "start",
+    },
+  },
+  {
+    element: '[data-tour="builder-form"]',
+    popover: {
+      title: "Enter your details",
+      description:
+        "Edit the selected section here. Your changes are reflected in the resume preview as you work.",
+      side: "right",
+      align: "start",
+    },
+  },
+  {
+    element: '[data-tour="builder-tabs"]',
+    popover: {
+      title: "Reorder sections with drag and drop",
+      description:
+        "Press and drag a sortable section tab to change its priority. Inside sections such as Work Experience, Education, Projects, and Certificates, use the entry drag handles to reorder individual items too. Basics, Additional, and More stay in their fixed tab positions.",
+      side: "bottom",
+      align: "start",
+    },
+  },
+  {
+    element: '[data-tour="builder-divider"]',
+    popover: {
+      title: "Resize the workspace",
+      description:
+        "On larger screens, drag this divider left or right to give the form or the live preview more room.",
+      side: "right",
+      align: "center",
+    },
+  },
+  {
+    element: '[data-tour="builder-preview"]',
+    popover: {
+      title: "See your resume live",
+      description:
+        "Review your resume as you edit. On a phone, use the Preview button to open the larger preview.",
+      side: "left",
+      align: "start",
+    },
+  },
+  {
+    element: '[data-tour="builder-zoom"]',
+    popover: {
+      title: "Adjust preview zoom",
+      description:
+        "Use minus and plus to scale the preview on screen. This only changes how large it appears in the editor.",
+      side: "bottom",
+      align: "end",
+    },
+  },
+  {
+    element: '[data-tour="builder-sample"]',
+    popover: {
+      title: "Try a sample resume",
+      description:
+        "Load example resume content to explore the editor and preview. This replaces the current form content, so save a draft first if you need it.",
+      side: "bottom",
+      align: "end",
+    },
+  },
+  {
+    element: '[data-tour="builder-save"]',
+    popover: {
+      title: "Save a local draft",
+      description:
+        "Save your current resume in this browser so you can return to it later on this device and browser.",
+      side: "bottom",
+      align: "end",
+    },
+  },
+  {
+    element: '[data-tour="builder-reset"]',
+    popover: {
+      title: "Reset the form",
+      description:
+        "Reset clears the current resume content and removes the locally saved builder draft. Use it only when you want to start over.",
+      side: "bottom",
+      align: "end",
+    },
+  },
+  {
+    element: '[data-tour="builder-proceed"]',
+    popover: {
+      title: "Continue to final review",
+      description:
+        "When your resume is ready, proceed to choose a template and color, check ATS compatibility, polish the content with AI, and print or save a PDF.",
+      side: "bottom",
+      align: "end",
+    },
+  },
+];
 
 /**
  * Sortable Tab Item for Reorderable Priority Sections
@@ -665,8 +779,12 @@ export default function ResumeBuilder({
               </h1>
             </div>
 
-            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+            <div
+              data-tour="builder-actions"
+              className="flex flex-wrap items-center gap-1.5 sm:gap-2"
+            >
               <button
+                data-tour="builder-sample"
                 type="button"
                 onClick={loadDemo}
                 className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
@@ -676,6 +794,7 @@ export default function ResumeBuilder({
               </button>
 
               <button
+                data-tour="builder-reset"
                 type="button"
                 onClick={reset}
                 className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
@@ -685,6 +804,7 @@ export default function ResumeBuilder({
               </button>
 
               <button
+                data-tour="builder-save"
                 type="button"
                 onClick={saveDraft}
                 className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
@@ -695,6 +815,7 @@ export default function ResumeBuilder({
 
               {/* Mobile-Only Live Resume Preview Button in Navigation Header */}
               <button
+                data-tour="builder-preview"
                 type="button"
                 onClick={() => setShowMobilePreview(true)}
                 className="inline-flex lg:hidden items-center gap-1 rounded-lg border border-indigo-200 bg-indigo-50 px-2.5 py-1.5 text-xs font-semibold text-indigo-700 shadow-sm active:scale-95"
@@ -704,6 +825,7 @@ export default function ResumeBuilder({
               </button>
 
               <button
+                data-tour="builder-proceed"
                 type="button"
                 onClick={handlePreProcessingResume}
                 className="inline-flex items-center gap-1 rounded-lg
@@ -713,18 +835,29 @@ export default function ResumeBuilder({
                 <IconPrinter size={14} />
                 <span className="hidden sm:inline">Proceed</span>
               </button>
+              <ProductTour
+                tourId="resume-builder"
+                steps={RESUME_BUILDER_TOUR_STEPS}
+                label="Tour"
+              />
             </div>
           </div>
         </header>
 
         {/* MOBILE VIEWPORT */}
         <main className="block lg:hidden w-full">
-          <div className="sticky top-[53px] z-20 flex gap-1 overflow-x-auto border-b border-slate-200 bg-white/95 px-3 py-2.5 backdrop-blur scroll-slim shadow-sm">
+          <div
+            data-tour="builder-tabs"
+            className="sticky top-[53px] z-20 flex gap-1 overflow-x-auto border-b border-slate-200 bg-white/95 px-3 py-2.5 backdrop-blur scroll-slim shadow-sm"
+          >
             {renderTabs("resume-tabs-mobile")}
           </div>
 
           <div className="p-0 lg:p-3 pb-28">
-            <div className="mx-auto max-w-2xl bg-white rounded-xl shadow-sm border border-slate-200/80 p-0 lg:p-3 sm:p-5">
+            <div
+              data-tour="builder-form"
+              className="mx-auto max-w-2xl bg-white rounded-xl shadow-sm border border-slate-200/80 p-0 lg:p-3 sm:p-5"
+            >
               {renderTabContent()}
             </div>
           </div>
@@ -737,10 +870,14 @@ export default function ResumeBuilder({
           style={{ height: "calc(100vh - 54px)" }}
         >
           <aside
+            data-tour="builder-form"
             className="border-r border-slate-200 bg-white shrink-0 overflow-hidden flex flex-col"
             style={{ width: `min(${formWidth}px, 52vw)`, minWidth: "180px" }}
           >
-            <div className="sticky top-0 z-10 flex gap-1 overflow-x-auto border-b border-slate-200 bg-white/95 px-3 py-2 backdrop-blur scroll-slim">
+            <div
+              data-tour="builder-tabs"
+              className="sticky top-0 z-10 flex gap-1 overflow-x-auto border-b border-slate-200 bg-white/95 px-3 py-2 backdrop-blur scroll-slim"
+            >
               {renderTabs("resume-tabs-desktop")}
             </div>
 
@@ -755,6 +892,7 @@ export default function ResumeBuilder({
 
           {/* Draggable Divider */}
           <div
+            data-tour="builder-divider"
             className="relative z-[100] h-full shrink-0"
             style={{
               width: `${DIVIDER_HIT_WIDTH}px`,
@@ -790,7 +928,10 @@ export default function ResumeBuilder({
           </div>
 
           {/* Desktop Preview Panel */}
-          <section className="min-w-0 min-h-0 flex-1 overflow-hidden flex flex-col">
+          <section
+            data-tour="builder-preview"
+            className="min-w-0 min-h-0 flex-1 overflow-hidden flex flex-col"
+          >
             <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-slate-200 bg-white/90 px-4 py-2.5 backdrop-blur">
               <div className="min-w-0">
                 <strong className="block truncate text-xs font-semibold text-slate-900 sm:text-sm">
@@ -804,7 +945,10 @@ export default function ResumeBuilder({
                 </span>
               </div>
 
-              <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white p-0.5 shadow-sm">
+              <div
+                data-tour="builder-zoom"
+                className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white p-0.5 shadow-sm"
+              >
                 <button
                   type="button"
                   className="flex h-6 w-6 items-center justify-center rounded text-slate-700 hover:bg-slate-100"

@@ -24,6 +24,64 @@ import {
 } from "@tabler/icons-react";
 import AtsScoreModal from "./AtsScoreModal";
 import { trackAiUsage, finalizeAiUsage } from "@/lib/trackAi";
+import ProductTour from "@/components/product-tour/ProductTour";
+
+const PRINT_RESUME_TOUR_STEPS = [
+  {
+    element: '[data-tour="print-preview"]',
+    popover: {
+      title: "Review your finished resume",
+      description: "This is the final resume preview. Check spacing, content, and layout before printing or saving a PDF.",
+      side: "bottom",
+      align: "center",
+    },
+  },
+  {
+    element: '[data-tour="print-theme"]',
+    popover: {
+      title: "Choose your accent color",
+      description: "Select a color swatch to change the resume's theme. Your content stays the same while the accent styling updates.",
+      side: "bottom",
+      align: "center",
+    },
+  },
+  {
+    element: '[data-tour="print-template"]',
+    popover: {
+      title: "Switch resume templates",
+      description: "Try another template to find the layout that best fits your career and the content in your resume.",
+      side: "bottom",
+      align: "center",
+    },
+  },
+  {
+    element: '[data-tour="print-ats"]',
+    popover: {
+      title: "Check ATS compatibility",
+      description: "Run the ATS score check to review how well your resume matches common applicant-tracking-system criteria. Availability depends on your credits.",
+      side: "bottom",
+      align: "center",
+    },
+  },
+  {
+    element: '[data-tour="print-polish"]',
+    popover: {
+      title: "Polish with AI",
+      description: "Use AI to improve resume wording. Review the result carefully, and use Revert Original if you want to restore the previous content.",
+      side: "bottom",
+      align: "center",
+    },
+  },
+  {
+    element: '[data-tour="print-pdf"]',
+    popover: {
+      title: "Print or save as PDF",
+      description: "When the resume looks right, choose Print / PDF and use your browser's print dialog to save a PDF or print a copy.",
+      side: "bottom",
+      align: "end",
+    },
+  },
+];
 
 function getResponseMessage(result, fallback) {
   const details = Array.isArray(result?.details)
@@ -384,7 +442,7 @@ export default function PrintResume({ resumeInfoId = null }) {
 
           <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto justify-between sm:justify-end">
             {/* Theme Selector */}
-            <div className="flex items-center gap-2 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200">
+            <div data-tour="print-theme" className="flex items-center gap-2 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200">
               <IconPalette size={14} className="text-slate-500 shrink-0" />
               <span className="text-[11px] font-semibold text-slate-700 hidden md:inline">
                 Theme:
@@ -405,7 +463,7 @@ export default function PrintResume({ resumeInfoId = null }) {
             </div>
 
             {/* Template Selector */}
-            <div className="flex items-center gap-1.5 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200">
+            <div data-tour="print-template" className="flex items-center gap-1.5 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200">
               <IconLayout size={14} className="text-slate-500 shrink-0" />
               <select
                 value={activeTemplate}
@@ -436,6 +494,7 @@ export default function PrintResume({ resumeInfoId = null }) {
 
             {/* ATS Score Check Button */}
             <button
+              data-tour="print-ats"
               type="button"
               onClick={() => {
                 if (!hasCredits) {
@@ -509,6 +568,7 @@ export default function PrintResume({ resumeInfoId = null }) {
 
             {/* AI Polish Button */}
             <button
+              data-tour="print-polish"
               type="button"
               onClick={() => {
                 if (!hasCredits) {
@@ -598,6 +658,7 @@ export default function PrintResume({ resumeInfoId = null }) {
 
             {/* Direct Print / PDF Button */}
             <button
+              data-tour="print-pdf"
               type="button"
               onClick={handlePrintPdf}
               disabled={isSaving}
@@ -605,6 +666,11 @@ export default function PrintResume({ resumeInfoId = null }) {
             >
               <IconPrinter size={14} /> {isSaving ? "Saving..." : "Print / PDF"}
             </button>
+            <ProductTour
+              tourId="print-resume"
+              steps={PRINT_RESUME_TOUR_STEPS}
+              label="Tour"
+            />
           </div>
         </div>
         {saveError && (
@@ -623,6 +689,7 @@ export default function PrintResume({ resumeInfoId = null }) {
       >
         <div
           id="printable-resume-area"
+          data-tour="print-preview"
           style={{
             width: "794px",
             transform: `scale(${scale})`,
