@@ -41,6 +41,7 @@ export default function LoginForm() {
       });
 
       const data = await response.json();
+      console.log("data", data.user.resumeCredits)
 
       if (!response.ok) {
         throw new Error(
@@ -60,7 +61,7 @@ export default function LoginForm() {
       const returnTo = window.sessionStorage.getItem("airesume-auth-return-to");
       if (returnTo && returnTo.startsWith("/")) {
         window.sessionStorage.removeItem("airesume-auth-return-to");
-        router.replace(returnTo);
+        router.replace(Number(data.user.resumeCredits) > 0 ? "/" :returnTo);
         return;
       }
 

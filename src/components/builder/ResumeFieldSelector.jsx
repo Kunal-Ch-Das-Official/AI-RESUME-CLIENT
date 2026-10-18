@@ -1,21 +1,22 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
-
+import { useSearchParams, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import ResumeAnalyseLoader from "../utils/resume-analyse-loader/ResumeAnalyseLoader";
+import { useAuthStore } from "@/store/auth.store";
 
 export default function ResumeFieldSelector() {
+  const router = useRouter();
+  const { resumeCredits, isInitialized } = useAuthStore();
+
+  // Only evaluate credits once storage hydration is initialized
+  const hasCredits = isInitialized ? Number(resumeCredits) > 0 : true;
+
   const [isModalOpen, setIsModalOpen] = useState(false);
-
   const [dragOver, setDragOver] = useState(false);
-
   const [selectedFile, setSelectedFile] = useState(null);
-
   const [uploading, setUploading] = useState(false);
-
   const [uploadSuccess, setUploadSuccess] = useState(false);
-
   const [errorMessage, setErrorMessage] = useState("");
 
   const fileInputRef = useRef(null);
@@ -56,9 +57,17 @@ export default function ResumeFieldSelector() {
   const query = searchParams.get("template") || "clean-ats-optimizer";
 
   // Handle Create From Scratch navigation
-
   const handleCreateFromScratch = () => {
     window.location.href = `/resume-builder?template=${encodeURIComponent(query)}`;
+  };
+
+  // Handle Import Resume Click
+  const handleImportResumeClick = () => {
+    if (!hasCredits) {
+      router.push("/plans");
+      return;
+    }
+    setIsModalOpen(true);
   };
 
   // Handle drag & drop events.
@@ -154,7 +163,7 @@ export default function ResumeFieldSelector() {
       try {
         data = await response.json();
       } catch {
-        // Preserve the HTTP status as the useful error if the API did not return JSON.
+        // Fallback for non-JSON response
       }
 
       if (!response.ok) {
@@ -201,22 +210,16 @@ export default function ResumeFieldSelector() {
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-white text-slate-900 flex flex-col justify-between selection:bg-indigo-500 selection:text-white relative overflow-hidden">
       {/* Subtle ambient gradient mesh matching home page */}
-
       <div className="pointer-events-none absolute inset-0 -z-10">
         <div className="absolute -top-40 left-1/2 h-[560px] w-[920px] -translate-x-1/2 rounded-full bg-gradient-to-tr from-indigo-200/50 via-violet-200/50 to-sky-200/40 blur-[120px] animate-pulse" />
-
         <div className="absolute top-1/3 -right-20 h-80 w-80 rounded-full bg-fuchsia-200/40 blur-[100px]" />
-
         <div className="absolute top-1/2 -left-24 h-72 w-72 rounded-full bg-cyan-200/40 blur-[100px]" />
-
         <div className="absolute inset-0 bg-grid mask-fade" />
       </div>
 
       {/* Main Container */}
-
       <main className="w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-24 z-10 flex flex-col items-center">
         {/* Title and subtitle */}
-
         <div className="text-center max-w-2xl mb-14">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-indigo-200/80 bg-white/80 text-indigo-700 text-xs font-semibold shadow-sm backdrop-blur-md mb-4">
             <svg
@@ -250,10 +253,8 @@ export default function ResumeFieldSelector() {
         </div>
 
         {/* Two Options / Cards Grid */}
-
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-3xl mt-12">
           {/* Option 1: Create from scratch */}
-
           <div
             onClick={handleCreateFromScratch}
             className="group relative rounded-2xl p-8 bg-white border border-slate-200 hover:border-indigo-300 shadow-xl shadow-indigo-500/5 transition-all duration-300 hover:-translate-y-1.5 cursor-pointer flex flex-col justify-between overflow-hidden"
@@ -261,11 +262,7 @@ export default function ResumeFieldSelector() {
             <div className="absolute inset-0 bg-gradient-to-tr from-indigo-50/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
             <div>
-              <div
-                className="h-[100px] w-[100px] p-4 rounded-xl border border-indigo-100 bg-indigo-50 text-indigo-600
-
-              flex items-center justify-center shadow-sm mb-6 group-hover:scale-110 transition-transform duration-300"
-              >
+              <div className="h-[100px] w-[100px] p-4 rounded-xl border border-indigo-100 bg-indigo-50 text-indigo-600 flex items-center justify-center shadow-sm mb-6 group-hover:scale-110 transition-transform duration-300">
                 <svg
                   className="w-7 h-7"
                   fill="none"
@@ -292,13 +289,8 @@ export default function ResumeFieldSelector() {
               </p>
             </div>
 
-            <div
-              className="mt-8 flex items-center gap-2 text-xs font-semibold text-indigo-600
-
-            group-hover:text-indigo-800 tracking-wider uppercase"
-            >
+            <div className="mt-8 flex items-center gap-2 text-xs font-semibold text-indigo-600 group-hover:text-indigo-800 tracking-wider uppercase">
               <span>Get Started</span>
-
               <svg
                 className="w-4 h-4 transform group-hover:translate-x-1 transition-transform"
                 fill="none"
@@ -315,51 +307,107 @@ export default function ResumeFieldSelector() {
             </div>
           </div>
 
-          {/* Option 2: Import existing resume */}
-
+          {/* Option 2: Import existing resume (Locked if no credits) */}
           <div
-            onClick={() => setIsModalOpen(true)}
-            className="group relative rounded-2xl p-8 bg-white border border-slate-200
-
-            hover:border-emerald-300 shadow-xl shadow-emerald-500/5 transition-all duration-300 hover:-translate-y-1.5 cursor-pointer flex flex-col justify-between overflow-hidden"
+            onClick={handleImportResumeClick}
+            className={`group relative rounded-2xl p-8 bg-white border transition-all duration-300 hover:-translate-y-1.5 cursor-pointer flex flex-col justify-between overflow-hidden ${
+              hasCredits
+                ? "border-slate-200 hover:border-emerald-300 shadow-xl shadow-emerald-500/5"
+                : "border-amber-200/80 hover:border-amber-400 shadow-xl shadow-amber-500/5"
+            }`}
           >
-            <div className="absolute inset-0 bg-gradient-to-tr from-emerald-50/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-
-            <div>
-              <div
-                className="h-[100px] w-[100px] p-4 rounded-xl border border-emerald-100 bg-emerald-50
-
-              text-emerald-600 flex items-center justify-center shadow-sm mb-6 group-hover:scale-110
-
-              transition-transform duration-300"
-              >
+            {/* Top Right Credit Pill */}
+            {!hasCredits && (
+              <div className="absolute top-4 right-4 z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-800 text-[11px] font-semibold tracking-wide">
                 <svg
-                  className="w-7 h-7"
+                  className="w-3.5 h-3.5 text-amber-600"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
+                  strokeWidth={2}
                 >
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
+                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
                   />
                 </svg>
+                <span>Requires Credit</span>
+              </div>
+            )}
+
+            <div
+              className={`absolute inset-0 bg-gradient-to-tr opacity-0 group-hover:opacity-100 transition-opacity duration-300 ${
+                hasCredits
+                  ? "from-emerald-50/50 to-transparent"
+                  : "from-amber-50/40 to-transparent"
+              }`}
+            />
+
+            <div>
+              <div
+                className={`h-[100px] w-[100px] p-4 rounded-xl border flex items-center justify-center shadow-sm mb-6 group-hover:scale-110 transition-transform duration-300 ${
+                  hasCredits
+                    ? "border-emerald-100 bg-emerald-50 text-emerald-600"
+                    : "border-amber-100 bg-amber-50 text-amber-600"
+                }`}
+              >
+                {hasCredits ? (
+                  <svg
+                    className="w-7 h-7"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
+                    />
+                  </svg>
+                ) : (
+                  <svg
+                    className="w-7 h-7"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                    />
+                  </svg>
+                )}
               </div>
 
-              <h3 className="text-xl font-bold text-slate-900 mb-2 group-hover:text-emerald-700 transition-colors">
+              <h3
+                className={`text-xl font-bold text-slate-900 mb-2 transition-colors ${
+                  hasCredits
+                    ? "group-hover:text-emerald-700"
+                    : "group-hover:text-amber-800"
+                }`}
+              >
                 Import existing resume
               </h3>
 
               <p className="text-slate-600 text-sm leading-relaxed">
-                Upload your current PDF or Word resume. Our AI parser will
-                instantly auto-fill your experience, skills, and education.
+                {hasCredits
+                  ? "Upload your current PDF or Word resume. Our AI parser will instantly auto-fill your experience, skills, and education."
+                  : "AI resume extraction is exclusive to paid plans. Upgrade your account or buy credits to auto-fill your profile."}
               </p>
             </div>
 
-            <div className="mt-8 flex items-center gap-2 text-xs font-semibold text-emerald-600 group-hover:text-emerald-800 tracking-wider uppercase">
-              <span>Upload File</span>
+            <div
+              className={`mt-8 flex items-center gap-2 text-xs font-semibold tracking-wider uppercase ${
+                hasCredits
+                  ? "text-emerald-600 group-hover:text-emerald-800"
+                  : "text-amber-700 group-hover:text-amber-900"
+              }`}
+            >
+              <span>{hasCredits ? "Upload File" : "Upgrade to Unlock"}</span>
 
               <svg
                 className="w-4 h-4 transform group-hover:translate-x-1 transition-transform"
@@ -379,8 +427,7 @@ export default function ResumeFieldSelector() {
         </div>
       </main>
 
-      {/* Modal for File Upload with Light Green showcase styling */}
-
+      {/* Modal for File Upload */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
           <div className="relative w-full max-w-lg rounded-3xl bg-white border border-emerald-200 p-6 md:p-8 shadow-2xl shadow-emerald-950/10">
@@ -410,15 +457,11 @@ export default function ResumeFieldSelector() {
             )}
 
             {/* Close Button */}
-
             <button
               onClick={() => {
                 setIsModalOpen(false);
-
                 setSelectedFile(null);
-
                 setUploadSuccess(false);
-
                 setErrorMessage("");
               }}
               className="absolute top-4 right-2 text-slate-400 hover:text-slate-900 p-2 rounded-full hover:bg-slate-100 transition"
@@ -465,8 +508,7 @@ export default function ResumeFieldSelector() {
               </p>
             </div>
 
-            {/* Drag & Drop Upload Zone with Light Green Theme */}
-
+            {/* Drag & Drop Upload Zone */}
             <div
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
@@ -561,7 +603,6 @@ export default function ResumeFieldSelector() {
             </div>
 
             {/* Error Message */}
-
             {errorMessage && (
               <div className="mt-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
                 <svg
@@ -577,13 +618,11 @@ export default function ResumeFieldSelector() {
                     d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
                   />
                 </svg>
-
                 <span>{errorMessage}</span>
               </div>
             )}
 
             {/* Success Feedback */}
-
             {uploadSuccess && (
               <div className="mt-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center gap-2">
                 <svg
@@ -599,7 +638,6 @@ export default function ResumeFieldSelector() {
                     d="M5 13l4 4L19 7"
                   />
                 </svg>
-
                 <span>
                   Resume imported successfully. Opening your resume builder...
                 </span>

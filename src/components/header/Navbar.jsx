@@ -38,7 +38,7 @@ const LINKS = [
     name: "Contact",
     href: "/contact",
     icon: IconMessage,
-  },
+  }
 ];
 
 export default function Navbar() {

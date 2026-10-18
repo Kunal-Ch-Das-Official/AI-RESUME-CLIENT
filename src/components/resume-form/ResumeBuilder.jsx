@@ -1,7 +1,7 @@
 // components/builder/ResumeBuilder.jsx
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   DndContext,
   closestCenter,
@@ -159,6 +159,11 @@ export default function ResumeBuilder({
     templateName: validInitial,
   }));
 
+  const resumeRef = useRef(resume);
+  useEffect(() => {
+    resumeRef.current = resume;
+  }, [resume]);
+
   const [activeTab, setActiveTab] = useState("Basics");
   const [activeTabHydrated, setActiveTabHydrated] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -170,6 +175,10 @@ export default function ResumeBuilder({
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [pendingRedirectUrl, setPendingRedirectUrl] = useState("");
   const [isProceeding, setIsProceeding] = useState(false);
+
+  // Exit & Draft Confirmation Modal State
+  const [showExitModal, setShowExitModal] = useState(false);
+  const isNavigatingAwayRef = useRef(false);
 
   // Professional Alert Modal State
   const [alertModal, setAlertModal] = useState({
@@ -205,6 +214,65 @@ export default function ResumeBuilder({
       coordinateGetter: sortableKeyboardCoordinates,
     }),
   );
+
+  // Intercept Browser Reload / Tab Close (`beforeunload`)
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (isNavigatingAwayRef.current) return;
+      // Auto-persist latest data to localStorage so nothing is lost
+      try {
+        const draft = stripTransientUploadReferences(resumeRef.current);
+        window.localStorage.setItem("airesume-draft", JSON.stringify(draft));
+      } catch (err) {
+        console.warn("Could not auto-save on unload:", err);
+      }
+      e.preventDefault();
+      e.returnValue = "";
+      return "";
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, []);
+
+  // Intercept Browser Back Button (`popstate`)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    window.history.pushState({ builderGuard: true }, "", window.location.href);
+
+    const handlePopState = () => {
+      if (isNavigatingAwayRef.current) return;
+      // Push state back so page doesn't instantly leave
+      window.history.pushState(
+        { builderGuard: true },
+        "",
+        window.location.href,
+      );
+      setShowExitModal(true);
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
+  const handleModalSaveAndExit = () => {
+    try {
+      const draft = stripTransientUploadReferences(resumeRef.current);
+      window.localStorage.setItem("airesume-draft", JSON.stringify(draft));
+    } catch (err) {
+      console.warn("Could not save draft:", err);
+    }
+    setShowExitModal(false);
+    isNavigatingAwayRef.current = true;
+    window.history.back();
+  };
+
+  const handleModalDiscardAndExit = () => {
+    setShowExitModal(false);
+    isNavigatingAwayRef.current = true;
+    window.history.back();
+  };
 
   useEffect(() => {
     if (!document_id) {
@@ -539,6 +607,7 @@ export default function ResumeBuilder({
   const handlePreProcessingResume = async () => {
     try {
       setIsProceeding(true);
+      isNavigatingAwayRef.current = true;
 
       const targetTemplate = TEMPLATE_DEFINITIONS.some(
         (item) => item.id === resume?.templateName,
@@ -557,6 +626,7 @@ export default function ResumeBuilder({
 
       window.location.href = targetUrl;
     } catch (error) {
+      isNavigatingAwayRef.current = false;
       console.error("Resume draft staging error:", error);
       showAlert(
         "Unable to Continue",
@@ -647,41 +717,20 @@ export default function ResumeBuilder({
           </div>
         </header>
 
-        {/* ========================================================================= */}
-        {/* MOBILE VIEWPORT (< lg): Form First + Floating Live Preview Button         */}
-        {/* ========================================================================= */}
+        {/* MOBILE VIEWPORT */}
         <main className="block lg:hidden w-full">
-          {/* Scrollable Tab Ribbon */}
           <div className="sticky top-[53px] z-20 flex gap-1 overflow-x-auto border-b border-slate-200 bg-white/95 px-3 py-2.5 backdrop-blur scroll-slim shadow-sm">
             {renderTabs("resume-tabs-mobile")}
           </div>
 
-          {/* Form Content Area */}
           <div className="p-0 lg:p-3 pb-28">
             <div className="mx-auto max-w-2xl bg-white rounded-xl shadow-sm border border-slate-200/80 p-0 lg:p-3 sm:p-5">
               {renderTabContent()}
             </div>
           </div>
-
-          {/* Mobile Bottom Floating Action Bar */}
-          {/* <div className="fixed bottom-4 left-0 right-0 z-30 px-4 flex justify-center pointer-events-none">
-            <button
-              type="button"
-              onClick={() => setShowMobilePreview(true)}
-              className="pointer-events-auto inline-flex items-center gap-2 rounded-full bg-slate-900/95 text-white px-5 py-3 text-sm font-semibold shadow-2xl backdrop-blur-md ring-1 ring-white/20 active:scale-95 transition-transform"
-            >
-              <IconEye size={18} className="text-indigo-400" />
-              <span>Preview Live Resume</span>
-              <span className="ml-1 inline-flex items-center rounded-full bg-indigo-500/30 px-2 py-0.5 text-[10px] font-medium text-indigo-200 border border-indigo-400/20">
-                A4
-              </span>
-            </button>
-          </div> */}
         </main>
 
-        {/* ========================================================================= */}
-        {/* DESKTOP & IPAD VIEWPORT (>= lg): Split Resizable Layout                   */}
-        {/* ========================================================================= */}
+        {/* DESKTOP & IPAD VIEWPORT */}
         <div
           ref={editorRef}
           className="hidden lg:flex w-full min-w-0 overflow-hidden"
@@ -801,12 +850,9 @@ export default function ResumeBuilder({
         </div>
       </div>
 
-      {/* ========================================================================= */}
-      {/* MOBILE LIVE PREVIEW MODAL OVERLAY                                         */}
-      {/* ========================================================================= */}
+      {/* MOBILE LIVE PREVIEW MODAL */}
       {showMobilePreview && (
         <div className="fixed inset-0 z-50 flex flex-col bg-slate-900/60 backdrop-blur-sm lg:hidden">
-          {/* Header */}
           <div className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 shadow-sm">
             <div className="min-w-0 pr-2">
               <h3 className="truncate text-sm font-bold text-slate-900">
@@ -846,7 +892,6 @@ export default function ResumeBuilder({
             </div>
           </div>
 
-          {/* Render Scroll Area */}
           <div className="flex-1 overflow-auto bg-slate-200/80 p-3 flex justify-center items-start">
             <div
               style={{
@@ -867,7 +912,6 @@ export default function ResumeBuilder({
             </div>
           </div>
 
-          {/* Footer Back Button */}
           <div className="border-t border-slate-200 bg-white p-3 flex items-center justify-between gap-3">
             <button
               type="button"
@@ -891,6 +935,149 @@ export default function ResumeBuilder({
       <div id="resume-print-area" className="hidden print:block">
         <ResumeRenderer resumeData={resume} />
       </div>
+
+      {/* Custom Exit & Draft Confirmation Modal */}
+      {showExitModal && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 10001,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: "rgba(15, 23, 42, 0.65)",
+            backdropFilter: "blur(5px)",
+            padding: "16px",
+          }}
+        >
+          <div
+            style={{
+              position: "relative",
+              width: "100%",
+              maxWidth: "420px",
+              borderRadius: "16px",
+              backgroundColor: "#ffffff",
+              padding: "24px",
+              boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+              fontFamily: "system-ui, -apple-system, sans-serif",
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => setShowExitModal(false)}
+              style={{
+                position: "absolute",
+                right: "16px",
+                top: "16px",
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                color: "#94a3b8",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <IconX size={20} />
+            </button>
+
+            <div
+              style={{ display: "flex", alignItems: "flex-start", gap: "14px" }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  height: "44px",
+                  width: "44px",
+                  flexShrink: 0,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  borderRadius: "12px",
+                  backgroundColor: "#eff6ff",
+                  color: "#3b82f6",
+                }}
+              >
+                <IconDeviceFloppy size={24} />
+              </div>
+
+              <div
+                style={{ display: "flex", flexDirection: "column", gap: "6px" }}
+              >
+                <h3
+                  style={{
+                    margin: 0,
+                    fontSize: "16px",
+                    fontWeight: "700",
+                    color: "#0f172a",
+                  }}
+                >
+                  Save resume draft?
+                </h3>
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: "13px",
+                    lineHeight: "1.5",
+                    color: "#475569",
+                  }}
+                >
+                  You are about to navigate away. Would you like to save your
+                  current form entries so you can continue editing later?
+                </p>
+              </div>
+            </div>
+
+            <div
+              style={{
+                marginTop: "24px",
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: "8px",
+              }}
+            >
+              <button
+                type="button"
+                onClick={handleModalDiscardAndExit}
+                style={{
+                  borderRadius: "10px",
+                  backgroundColor: "#ffffff",
+                  border: "1px solid #cbd5e1",
+                  color: "#64748b",
+                  padding: "9px 15px",
+                  fontSize: "12px",
+                  fontWeight: "600",
+                  cursor: "pointer",
+                  transition: "all 150ms ease",
+                }}
+              >
+                Leave without Saving
+              </button>
+
+              <button
+                type="button"
+                onClick={handleModalSaveAndExit}
+                style={{
+                  borderRadius: "10px",
+                  backgroundColor: "#4f46e5",
+                  border: "none",
+                  color: "#ffffff",
+                  padding: "9px 18px",
+                  fontSize: "12px",
+                  fontWeight: "600",
+                  cursor: "pointer",
+                  boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
+                }}
+              >
+                Save Draft &amp; Exit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Professional Alert Modal */}
       {alertModal.isOpen && (

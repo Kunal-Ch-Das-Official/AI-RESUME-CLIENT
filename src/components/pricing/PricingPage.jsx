@@ -1,7 +1,8 @@
 "use client";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Script from "next/script";
 import { useRouter, usePathname } from "next/navigation";
+import { useAuthStore } from "@/store/auth.store";
 
 const PRICING_TIERS = [
   {
@@ -72,11 +73,70 @@ const PRICING_TIERS = [
   },
 ];
 
-export default function PricingPage({ user }) {
+export default function PricingPage({ user: propUser }) {
   const router = useRouter();
   const pathname = usePathname();
+  const { id, userName, userEmail, fullName, resumeCredits, activePlan } =
+    useAuthStore();
+
+  const [fetchedUser, setFetchedUser] = useState(null);
   const [loadingPlan, setLoadingPlan] = useState(null);
   const [errorMessage, setErrorMessage] = useState("");
+
+  // Prefer user from Zustand store (instant on client navigation) or prop,
+  // falling back to background fetch only on hard reload if store is empty.
+  const storeUser =
+    id || userEmail || userName
+      ? {
+          id,
+          userName,
+          userEmail,
+          emailId: userEmail,
+          fullName,
+          resumeCredits,
+          activePlan,
+        }
+      : null;
+
+  const currentUser = propUser || storeUser || fetchedUser;
+
+  useEffect(() => {
+    // Skip network request if we already have the user from the store or props
+    if (propUser || storeUser) return;
+
+    const endpoint = process.env.NEXT_PUBLIC_LOGGEDIN_USER;
+    if (!endpoint) return;
+
+    let cancelled = false;
+
+    async function fetchLoggedInUser() {
+      try {
+        const response = await fetch(endpoint, {
+          method: "GET",
+          credentials: "include",
+          headers: {
+            Accept: "application/json",
+          },
+        });
+
+        if (!response.ok) return;
+
+        const data = await response.json();
+        if (!cancelled) {
+          const loggedInUser = data?.user ?? data?.data ?? data;
+          setFetchedUser(loggedInUser);
+        }
+      } catch (error) {
+        console.error("Failed to fetch logged-in user:", error);
+      }
+    }
+
+    fetchLoggedInUser();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [propUser, storeUser]);
 
   const handleSelectPlan = async (plan) => {
     setErrorMessage("");
@@ -87,7 +147,7 @@ export default function PricingPage({ user }) {
       return;
     }
 
-    if (!user) {
+    if (!currentUser) {
       const redirectTo = pathname || "/plans";
       window.sessionStorage.setItem("airesume-auth-return-to", redirectTo);
       router.push(`/sign-in?redirect=${encodeURIComponent(redirectTo)}`);
@@ -123,8 +183,8 @@ export default function PricingPage({ user }) {
         description: `${plan.name} Tier (${plan.resumes})`,
         order_id: orderData.orderId,
         prefill: {
-          name: user.fullName || user.userName || "",
-          email: user.emailId || "",
+          name: currentUser.fullName || currentUser.userName || "",
+          email: currentUser.emailId || currentUser.userEmail || "",
         },
         theme: {
           color: "#4f46e5",

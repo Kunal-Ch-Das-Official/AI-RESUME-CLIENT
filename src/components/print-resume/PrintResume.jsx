@@ -2,6 +2,8 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuthStore } from "@/store/auth.store";
 import ResumeRenderer from "@/components/ResumeRenderer";
 import { COLOR_PALETTES, TEMPLATE_DEFINITIONS } from "@/lib/resume-data";
 import { buildResumeMultipartFormData } from "@/components/utils/resumeUploadHelper";
@@ -21,6 +23,7 @@ import {
   IconCheck,
 } from "@tabler/icons-react";
 import AtsScoreModal from "./AtsScoreModal";
+import { trackAiUsage, finalizeAiUsage } from "@/lib/trackAi";
 
 function getResponseMessage(result, fallback) {
   const details = Array.isArray(result?.details)
@@ -41,6 +44,12 @@ function getResponseMessage(result, fallback) {
 }
 
 export default function PrintResume({ resumeInfoId = null }) {
+  const router = useRouter();
+  const { resumeCredits, isInitialized } = useAuthStore();
+  const [isAtsBtnHovered, setIsAtsBtnHovered] = useState(false);
+  const [isPolishBtnHovered, setIsPolishBtnHovered] = useState(false);
+  const hasCredits = isInitialized ? Number(resumeCredits) > 0 : false;
+
   const [resumeInfo, setResumeInfo] = useState(null);
   const [originalResumeInfo, setOriginalResumeInfo] = useState(null);
   const [isPolished, setIsPolished] = useState(false);
@@ -180,6 +189,13 @@ export default function PrintResume({ resumeInfoId = null }) {
           setOriginalResumeInfo(resumeInfo);
         }
         setResumeInfo(result.resume);
+        const currentResumeId =
+          resumeInfo._id ||
+          resumeInfo.id ||
+          savedResumeId ||
+          resumeInfoId ||
+          "draft";
+        await trackAiUsage(currentResumeId, "resumePolish");
         setIsPolished(true);
 
         if (isDraft) {
@@ -236,6 +252,13 @@ export default function PrintResume({ resumeInfoId = null }) {
 
       const result = await response.json();
       setAtsReport(result.report);
+      const currentResumeId =
+        resumeInfo._id ||
+        resumeInfo.id ||
+        savedResumeId ||
+        resumeInfoId ||
+        "draft";
+      await trackAiUsage(currentResumeId, "atsCheckFeat");
     } catch (err) {
       console.error("ATS Check failed:", err);
       setSaveError(err?.message || "Unable to calculate ATS score right now.");
@@ -245,71 +268,13 @@ export default function PrintResume({ resumeInfoId = null }) {
     }
   };
 
+  // components/PrintResume.jsx
   const handlePrintPdf = async () => {
-    if (!isDraft) {
-      window.print();
-      return;
-    }
     if (isSaving) return;
-
     setIsSaving(true);
     setSaveError("");
 
     try {
-      let documentId = savedResumeId;
-      if (!documentId) {
-        const uploadData = {
-          ...resumeInfo,
-          templateName: activeTemplate,
-          themeColor: activeTheme,
-        };
-        const formData = buildResumeMultipartFormData(uploadData, pendingFiles);
-        const response = await fetch(
-          process.env.NEXT_PUBLIC_RESUME_DATA_UPLOAD_TO_DB_URL,
-          { method: "POST", body: formData },
-        );
-
-        const contentType = response.headers.get("content-type") || "";
-        let result;
-        if (contentType.includes("application/json")) {
-          result = await response.json();
-        } else {
-          const responseText = await response.text();
-          throw new Error(
-            `Server Error (${response.status}): ${responseText || response.statusText}`,
-          );
-        }
-
-        if (!response.ok) {
-          throw new Error(
-            getResponseMessage(
-              result,
-              `Failed to save resume (Status: ${response.status}).`,
-            ),
-          );
-        }
-
-        const savedResume =
-          result?.data?.resume || result?.data || result?.resume || result;
-        documentId =
-          savedResume?._id || savedResume?.id || result?._id || result?.id;
-        if (!documentId) {
-          throw new Error(
-            "The resume was submitted, but the server did not return a resume ID.",
-          );
-        }
-
-        setSavedResumeId(documentId);
-        await updatePendingResumeDraft({ savedResumeId: documentId }).catch(
-          (storageError) => {
-            console.warn(
-              "Could not persist the saved resume ID locally:",
-              storageError,
-            );
-          },
-        );
-      }
-
       const authResponse = await fetch(process.env.NEXT_PUBLIC_LOGGEDIN_USER, {
         method: "GET",
         credentials: "include",
@@ -317,28 +282,46 @@ export default function PrintResume({ resumeInfoId = null }) {
         cache: "no-store",
       });
 
-      let authData = null;
-      if (authResponse.ok) {
-        authData = await authResponse.json();
-      }
-      const user =
-        authData?.data?.user || authData?.user || authData?.data || authData;
-      const userId = user?.id || user?.userId || user?._id;
-
-      if (!authResponse.ok || !userId) {
+      if (!authResponse.ok) {
         const returnTo = `${window.location.pathname}${window.location.search}`;
         window.sessionStorage.setItem("airesume-auth-return-to", returnTo);
         window.location.href = "/sign-in";
         return;
       }
 
-      await addResumeId(documentId, userId);
-      await deletePendingResumeDraft().catch((storageError) => {
-        console.warn(
-          "Could not clear the temporary resume draft:",
-          storageError,
+      const targetResumeId =
+        savedResumeId ||
+        resumeInfoId ||
+        resumeInfo?._id ||
+        resumeInfo?.id ||
+        "draft";
+
+      // 1. Finalize AI features from Redis, persist to Mongo, and deduct credit via finalizeAiUsage
+      const finalizeResult = await finalizeAiUsage(targetResumeId);
+
+      if (!finalizeResult.ok) {
+        if (finalizeResult.status === 402) {
+          throw new Error(
+            "Insufficient resume credits. Please purchase tokens to print your AI-assisted resume.",
+          );
+        }
+        if (finalizeResult.status === 409) {
+          throw new Error(
+            "Finalization already in progress. Please retry in a moment.",
+          );
+        }
+        throw new Error(
+          finalizeResult.data?.message ||
+            "Failed to finalize resume AI deductions.",
         );
+      }
+
+      // 2. Clear pending local draft storage
+      await deletePendingResumeDraft().catch((storageError) => {
+        console.warn("Could not clear temporary draft:", storageError);
       });
+
+      // 3. Open Print Window
       window.print();
     } catch (err) {
       console.error("Resume save/print error:", err);
@@ -454,20 +437,122 @@ export default function PrintResume({ resumeInfoId = null }) {
             {/* ATS Score Check Button */}
             <button
               type="button"
-              onClick={handleCheckAts}
-              disabled={isCheckingAts}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 sm:px-3.5 py-1.5 sm:py-2 text-[11px] sm:text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50 active:scale-95 transition shrink-0 disabled:opacity-50"
+              onClick={() => {
+                if (!hasCredits) {
+                  router.push("/plans");
+                  return;
+                }
+                handleCheckAts();
+              }}
+              disabled={hasCredits && isCheckingAts}
+              onMouseEnter={() => setIsAtsBtnHovered(true)}
+              onMouseLeave={() => setIsAtsBtnHovered(false)}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                borderRadius: "8px",
+                padding: "6px 12px",
+                fontSize: "12px",
+                fontWeight: 600,
+                outline: "none",
+                boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
+                transition: "all 200ms ease",
+                boxSizing: "border-box",
+                flexShrink: 0,
+                ...(!hasCredits
+                  ? {
+                      backgroundColor: isAtsBtnHovered ? "#334155" : "#1e293b",
+                      color: "#FFA500",
+                      border: "1px solid rgba(51, 65, 85, 0.6)",
+                      cursor: "pointer",
+                      opacity: 1,
+                    }
+                  : {
+                      backgroundColor: isAtsBtnHovered ? "#f8fafc" : "#ffffff",
+                      color: "#334155",
+                      border: "1px solid #e2e8f0",
+                      cursor: isCheckingAts ? "not-allowed" : "pointer",
+                      opacity: isCheckingAts ? 0.5 : 1,
+                    }),
+              }}
             >
-              <IconChartBar size={14} className="text-indigo-600" />
-              <span>ATS Score</span>
+              {!hasCredits ? (
+                <>
+                  <svg
+                    style={{
+                      width: "14px",
+                      height: "14px",
+                      color: "#FFA500",
+                      flexShrink: 0,
+                    }}
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                    />
+                  </svg>
+                  <span style={{ color: "#FFA500" }}>ATS Score</span>
+                </>
+              ) : (
+                <>
+                  <IconChartBar size={14} className="text-indigo-600" />
+                  <span>ATS Score</span>
+                </>
+              )}
             </button>
 
             {/* AI Polish Button */}
             <button
               type="button"
-              onClick={handlePolishResume}
-              disabled={isPolishing}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 px-3 sm:px-3.5 py-1.5 sm:py-2 text-[11px] sm:text-xs font-semibold text-indigo-700 shadow-sm hover:bg-indigo-100 active:scale-95 transition shrink-0 disabled:opacity-50"
+              onClick={() => {
+                if (!hasCredits) {
+                  router.push("/plans");
+                  return;
+                }
+                handlePolishResume();
+              }}
+              disabled={hasCredits && isPolishing}
+              onMouseEnter={() => setIsPolishBtnHovered(true)}
+              onMouseLeave={() => setIsPolishBtnHovered(false)}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                borderRadius: "8px",
+                padding: "6px 12px",
+                fontSize: "12px",
+                fontWeight: 600,
+                outline: "none",
+                boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
+                transition: "all 200ms ease",
+                boxSizing: "border-box",
+                flexShrink: 0,
+                ...(!hasCredits
+                  ? {
+                      backgroundColor: isPolishBtnHovered
+                        ? "#334155"
+                        : "#1e293b",
+                      color: "#FFA500",
+                      border: "1px solid rgba(51, 65, 85, 0.6)",
+                      cursor: "pointer",
+                      opacity: 1,
+                    }
+                  : {
+                      backgroundColor: isPolishBtnHovered
+                        ? "#e0e7ff"
+                        : "#eef2ff",
+                      color: "#4338ca",
+                      border: "1px solid #c7d2fe",
+                      cursor: isPolishing ? "not-allowed" : "pointer",
+                      opacity: isPolishing ? 0.5 : 1,
+                    }),
+              }}
             >
               {isPolishing ? (
                 <>
@@ -478,6 +563,30 @@ export default function PrintResume({ resumeInfoId = null }) {
                 <>
                   <IconCheck size={14} className="text-emerald-600" />
                   <span className="text-emerald-700">Polished!</span>
+                </>
+              ) : !hasCredits ? (
+                <>
+                  <svg
+                    style={{
+                      width: "14px",
+                      height: "14px",
+                      color: "#FFA500",
+                      flexShrink: 0,
+                    }}
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                    />
+                  </svg>
+                  <span style={{ color: "#FFA500" }}>
+                    {isPolished ? "Polish Again" : "Polish"}
+                  </span>
                 </>
               ) : (
                 <>

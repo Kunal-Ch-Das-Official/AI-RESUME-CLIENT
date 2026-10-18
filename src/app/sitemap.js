@@ -1,6 +1,4 @@
-const SITE_URL = (
-  process.env.NEXT_PUBLIC_SITE_URL
-).replace(/\/+$/, "");
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL.replace(/\/+$/, "");
 
 export default function sitemap() {
   const now = new Date();
@@ -38,6 +36,12 @@ export default function sitemap() {
     },
     {
       url: `${SITE_URL}/contact`,
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.5,
+    },
+    {
+      url: `${SITE_URL}/plans`,
       lastModified: now,
       changeFrequency: "monthly",
       priority: 0.5,

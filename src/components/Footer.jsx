@@ -118,6 +118,7 @@ export default function Footer() {
               <ul className="mt-4 space-y-2.5 text-sm text-slate-400">
                 <FooterLink href="/about">About</FooterLink>
                 <FooterLink href="/contact">Contact</FooterLink>
+                 <FooterLink href="/plans">Pricing</FooterLink>
               </ul>
             </nav>
 

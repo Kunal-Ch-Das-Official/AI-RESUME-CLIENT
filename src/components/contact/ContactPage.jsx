@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { motion } from "framer-motion";
+import { useState, useEffect, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   IconArrowRight,
   IconCheck,
@@ -9,26 +9,355 @@ import {
   IconMessageCircle,
   IconMessageDots,
   IconWorld,
+  IconX,
+  IconAlertCircle,
 } from "@tabler/icons-react";
-import SquareAdBanner from "../adsense/ad-slots/SquareAdBanner"; // Adjust import path if needed
+import SquareAdBanner from "../adsense/ad-slots/SquareAdBanner";
+import PageLoader from "../utils/page-loader/PageLoader";
 
-export default function ContactPage({ slotNo = process.env.NEXT_PUBLIC_CONTACT_PAGE_SLOT_NO }) {
-  const [sent, setSent] = useState(false);
+// Result Modal Component using pure CSS & automatic 5s dismissal
+function StatusModal({ status, title, message, onClose }) {
+  const [timeLeft, setTimeLeft] = useState(5);
+  const isSuccess = status === "success";
+
+  useEffect(() => {
+    setTimeLeft(5);
+
+    const intervalId = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(intervalId);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    // Auto-close after 5 seconds cleanly without calling parent setState inside updater
+    const timeoutId = setTimeout(() => {
+      onClose();
+    }, 5000);
+
+    return () => {
+      clearInterval(intervalId);
+      clearTimeout(timeoutId);
+    };
+  }, [onClose]);
+
+  return (
+    <>
+      <style>{`
+        @keyframes progressCountdown {
+          from { width: 100%; }
+          to { width: 0%; }
+        }
+        .status-modal-backdrop {
+          position: fixed;
+          inset: 0;
+          z-index: 9999;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 16px;
+          background-color: rgba(15, 23, 42, 0.55);
+          backdrop-filter: blur(6px);
+          -webkit-backdrop-filter: blur(6px);
+        }
+        .status-modal-container {
+          position: relative;
+          width: 100%;
+          max-width: 440px;
+          box-sizing: border-box;
+          background-color: #ffffff;
+          border: 1px solid #e2e8f0;
+          border-radius: 20px;
+          padding: clamp(20px, 5vw, 32px);
+          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+          overflow: hidden;
+        }
+        .status-modal-close-btn {
+          position: absolute;
+          top: 14px;
+          right: 14px;
+          background: transparent;
+          border: none;
+          cursor: pointer;
+          padding: 6px;
+          border-radius: 8px;
+          color: #94a3b8;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: background-color 0.15s ease, color 0.15s ease;
+        }
+        .status-modal-close-btn:hover {
+          background-color: #f1f5f9;
+          color: #475569;
+        }
+        .status-modal-icon-badge {
+          width: 56px;
+          height: 56px;
+          border-radius: 16px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin: 0 auto;
+        }
+        .status-modal-btn {
+          width: 100%;
+          border: none;
+          outline: none;
+          cursor: pointer;
+          border-radius: 12px;
+          padding: 13px 20px;
+          font-size: 14px;
+          font-weight: 600;
+          color: #ffffff;
+          transition: transform 0.1s ease, filter 0.2s ease;
+        }
+        .status-modal-btn:hover {
+          filter: brightness(1.05);
+        }
+        .status-modal-btn:active {
+          transform: scale(0.98);
+        }
+        .status-modal-timer-bar {
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          height: 3px;
+          animation: progressCountdown 5s linear forwards;
+        }
+      `}</style>
+
+      <motion.div
+        key="status-modal-backdrop"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.2 }}
+        className="status-modal-backdrop"
+        onClick={onClose}
+      >
+        <motion.div
+          key="status-modal-card"
+          initial={{ opacity: 0, scale: 0.92, y: 12 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.92, y: 12 }}
+          transition={{ duration: 0.2, ease: "easeOut" }}
+          className="status-modal-container"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            type="button"
+            onClick={onClose}
+            className="status-modal-close-btn"
+            aria-label="Close modal"
+          >
+            <IconX size={20} />
+          </button>
+
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              textAlign: "center",
+            }}
+          >
+            <div
+              className="status-modal-icon-badge"
+              style={{
+                backgroundColor: isSuccess ? "#ecfdf5" : "#fff1f2",
+                border: `1px solid ${isSuccess ? "#a7f3d0" : "#fecdd3"}`,
+                color: isSuccess ? "#059669" : "#e11d48",
+              }}
+            >
+              {isSuccess ? (
+                <IconCheck size={30} />
+              ) : (
+                <IconAlertCircle size={30} />
+              )}
+            </div>
+
+            <h3
+              style={{
+                marginTop: "16px",
+                marginBottom: "0px",
+                fontSize: "clamp(18px, 4vw, 22px)",
+                fontWeight: 700,
+                color: "#0f172a",
+                lineHeight: 1.25,
+              }}
+            >
+              {title}
+            </h3>
+
+            <p
+              style={{
+                marginTop: "8px",
+                marginBottom: "0px",
+                fontSize: "14px",
+                lineHeight: "1.6",
+                color: "#475569",
+                wordBreak: "break-word",
+              }}
+            >
+              {message}
+            </p>
+
+            <span
+              style={{
+                marginTop: "10px",
+                fontSize: "12px",
+                color: "#94a3b8",
+                fontWeight: 500,
+              }}
+            >
+              Closing automatically in {timeLeft}s...
+            </span>
+
+            <button
+              type="button"
+              onClick={onClose}
+              className="status-modal-btn"
+              style={{
+                marginTop: "18px",
+                backgroundColor: isSuccess ? "#059669" : "#e11d48",
+                boxShadow: isSuccess
+                  ? "0 4px 14px 0 rgba(5, 150, 105, 0.3)"
+                  : "0 4px 14px 0 rgba(225, 29, 72, 0.3)",
+              }}
+            >
+              {isSuccess ? "Done" : "Try Again"}
+            </button>
+          </div>
+
+          <div
+            className="status-modal-timer-bar"
+            style={{
+              backgroundColor: isSuccess ? "#10b981" : "#f43f5e",
+            }}
+          />
+        </motion.div>
+      </motion.div>
+    </>
+  );
+}
+
+export default function ContactPage({
+  slotNo = process.env.NEXT_PUBLIC_CONTACT_PAGE_SLOT_NO,
+}) {
+  const [formData, setFormData] = useState({
+    fullName: "",
+    emailId: "",
+    subject: "",
+    message: "",
+  });
+
+  const [loading, setLoading] = useState(false);
+  const [modalState, setModalState] = useState({
+    isOpen: false,
+    status: "success",
+    title: "",
+    message: "",
+  });
+
+  const handleCloseModal = useCallback(() => {
+    setModalState((prev) => ({ ...prev, isOpen: false }));
+  }, []);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      const endpoint = process.env.NEXT_PUBLIC_CONTACT_US_URL;
+      if (!endpoint) {
+        throw new Error("Contact API endpoint URL is not configured.");
+      }
+
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      });
+
+      const result = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(
+          result?.message ||
+            "Failed to submit enquiry. Please try again later.",
+        );
+      }
+
+      setFormData({
+        fullName: "",
+        emailId: "",
+        subject: "",
+        message: "",
+      });
+
+      setModalState({
+        isOpen: true,
+        status: "success",
+        title: "Message Sent!",
+        message:
+          result?.message ||
+          "Your message was received successfully. We will get back to you shortly.",
+      });
+    } catch (err) {
+      setModalState({
+        isOpen: true,
+        status: "error",
+        title: "Submission Failed",
+        message:
+          err.message ||
+          "An unexpected error occurred while sending your message.",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <main className="min-h-screen bg-white">
+      {/* 1. Global Page Loader */}
+      {loading && <PageLoader />}
+
+      {/* 2. Feedback Modal with AnimatePresence */}
+      <AnimatePresence>
+        {modalState.isOpen && (
+          <StatusModal
+            status={modalState.status}
+            title={modalState.title}
+            message={modalState.message}
+            onClose={handleCloseModal}
+          />
+        )}
+      </AnimatePresence>
+
       <section className="relative overflow-hidden border-b border-slate-200 bg-gradient-to-b from-indigo-50/50 via-white to-white pt-12 pb-12 lg:pt-16 lg:pb-16">
         <div className="pointer-events-none absolute inset-0">
           <div className="absolute -top-20 left-1/2 h-80 w-[700px] -translate-x-1/2 rounded-full bg-violet-200/30 blur-[120px]" />
           <div className="absolute inset-0 bg-grid mask-fade" />
         </div>
 
-        {/* 50/50 Hero Flex Container */}
         <div
           className="relative mx-auto flex max-w-7xl flex-col items-center justify-between gap-10 px-4 sm:px-6 lg:flex-row lg:items-center lg:gap-12 lg:px-8"
           style={{ paddingBottom: "4rem" }}
         >
-          {/* Left Side (50% Width): Text Content */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -54,7 +383,6 @@ export default function ContactPage({ slotNo = process.env.NEXT_PUBLIC_CONTACT_P
             </p>
           </motion.div>
 
-          {/* Right Side (50% Width): Ad Container */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -72,17 +400,13 @@ export default function ContactPage({ slotNo = process.env.NEXT_PUBLIC_CONTACT_P
         </div>
       </section>
 
-      {/* Main Content Form & Aside Section */}
       <section className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
           <motion.form
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
-            onSubmit={(e) => {
-              e.preventDefault();
-              setSent(true);
-            }}
+            onSubmit={handleSubmit}
             className="rounded-2xl border border-slate-200 bg-white p-7 shadow-sm sm:p-10 lg:col-span-8"
           >
             <div className="mb-7">
@@ -93,19 +417,22 @@ export default function ContactPage({ slotNo = process.env.NEXT_PUBLIC_CONTACT_P
                 Tell us what you need.
               </h2>
               <p className="mt-2 max-w-xl text-sm leading-relaxed text-slate-600">
-                This form is UI-only for now. Connect it to your preferred API
-                or email provider when you wire up the backend.
+                Fill out the form below and our team will get back to you
+                shortly.
               </p>
             </div>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <label className="block">
                 <span className="mb-1.5 block text-xs font-semibold text-slate-700">
-                  First name
+                  Full name
                 </span>
                 <input
                   required
-                  placeholder="Aarav"
+                  name="fullName"
+                  value={formData.fullName}
+                  onChange={handleChange}
+                  placeholder="Aarav Sharma"
                   className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-3 text-sm text-slate-900 outline-none transition focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100"
                 />
               </label>
@@ -117,6 +444,9 @@ export default function ContactPage({ slotNo = process.env.NEXT_PUBLIC_CONTACT_P
                 <input
                   required
                   type="email"
+                  name="emailId"
+                  value={formData.emailId}
+                  onChange={handleChange}
                   placeholder="aarav@example.com"
                   className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-3 text-sm text-slate-900 outline-none transition focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100"
                 />
@@ -129,7 +459,11 @@ export default function ContactPage({ slotNo = process.env.NEXT_PUBLIC_CONTACT_P
               </span>
               <input
                 required
-                placeholder="I have a question about…"
+                minLength={8}
+                name="subject"
+                value={formData.subject}
+                onChange={handleChange}
+                placeholder="I have a question about… (min 8 characters)"
                 className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-3 text-sm text-slate-900 outline-none transition focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100"
               />
             </label>
@@ -141,26 +475,22 @@ export default function ContactPage({ slotNo = process.env.NEXT_PUBLIC_CONTACT_P
               <textarea
                 required
                 rows={6}
-                placeholder="Write your message…"
+                minLength={12}
+                name="message"
+                value={formData.message}
+                onChange={handleChange}
+                placeholder="Write your message here… (min 12 characters)"
                 className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-3 text-sm text-slate-900 outline-none transition focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100"
               />
             </label>
 
             <button
               type="submit"
-              className="mt-6 inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-indigo-500/30 transition-all hover:scale-[1.02] hover:shadow-indigo-500/50 active:scale-[0.98]"
+              disabled={loading}
+              className="mt-6 inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-indigo-500/30 transition-all hover:scale-[1.02] hover:shadow-indigo-500/50 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-60"
             >
-              {sent ? (
-                <>
-                  <IconCheck size={16} />
-                  Message ready
-                </>
-              ) : (
-                <>
-                  Send message
-                  <IconArrowRight size={16} />
-                </>
-              )}
+              Send message
+              <IconArrowRight size={16} />
             </button>
           </motion.form>
 
@@ -181,10 +511,10 @@ export default function ContactPage({ slotNo = process.env.NEXT_PUBLIC_CONTACT_P
                 For product questions, feedback, and integration discussions.
               </p>
               <a
-                href="mailto:kunal@subatomjs.dev"
+                href="mailto:team@airesume.download"
                 className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-indigo-600 hover:text-indigo-800"
               >
-                kunal@subatomjs.dev
+                team@airesume.download
                 <IconArrowRight size={14} />
               </a>
             </div>

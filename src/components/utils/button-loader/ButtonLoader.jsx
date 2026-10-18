@@ -1,4 +1,4 @@
-const ButtonLoader = () => {
+const ButtonLoader = ({backgroundColor = "#fff"}) => {
   return (
     <>
       <div
@@ -23,7 +23,7 @@ const ButtonLoader = () => {
               width: "0.074em",
               height: "0.2777em",
               borderRadius: "0.0555em",
-              backgroundColor: "#fff",
+              backgroundColor: backgroundColor,
               transformOrigin: "center -0.2222em",
               transform: `rotate(${i * 30}deg)`,
               animation: "spinner-fade 1s infinite linear",
