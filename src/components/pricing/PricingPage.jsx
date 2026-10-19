@@ -2,7 +2,8 @@
 import React, { useEffect, useState } from "react";
 import Script from "next/script";
 import { useRouter, usePathname } from "next/navigation";
-import { useAuthStore } from "@/store/auth.store";
+import { refreshAuthUser, useAuthStore } from "@/store/auth.store";
+import PageLoader from "@/components/utils/page-loader/PageLoader";
 
 const PRICING_TIERS = [
   {
@@ -81,6 +82,7 @@ export default function PricingPage({ user: propUser }) {
 
   const [fetchedUser, setFetchedUser] = useState(null);
   const [loadingPlan, setLoadingPlan] = useState(null);
+  const [isRedirecting, setIsRedirecting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
   // Prefer user from Zustand store (instant on client navigation) or prop,
@@ -190,6 +192,8 @@ export default function PricingPage({ user: propUser }) {
           color: "#4f46e5",
         },
         handler: async function (response) {
+          // Keep the loader visible while verifying payment and redirecting.
+          setIsRedirecting(true);
           try {
             // 4. Verify cryptographic signature on the backend
             const verifyRes = await fetch(
@@ -213,6 +217,19 @@ export default function PricingPage({ user: propUser }) {
               throw new Error(
                 verifyData.message || "Payment verification failed.",
               );
+            }
+
+            // The backend adds credits during payment verification. Update the
+            // shared auth state immediately so the Navbar/profile token balance
+            // changes without requiring a logout or page reload.
+            const verifiedUser = verifyData?.user ?? verifyData?.data?.user;
+            if (verifiedUser && verifiedUser.resumeCredits != null) {
+              useAuthStore.getState().setResumeCredits(
+                Number(verifiedUser.resumeCredits),
+              );
+            }
+            if (verifiedUser && verifiedUser.activePlan != null) {
+              useAuthStore.getState().setActivePlan(verifiedUser.activePlan);
             }
 
             // Resolve _id from orderData or verifyData, falling back to razorpay_order_id
@@ -242,9 +259,22 @@ export default function PricingPage({ user: propUser }) {
               );
             }
 
-            // 6. Navigate to builder upon confirmed credit update
-            router.push("/payment?suceess=true");
+            // Refresh the complete authenticated profile from the database.
+            // Keep the verified response values in state if this optional refresh
+            // fails temporarily; the backend has already confirmed the purchase.
+            try {
+              await refreshAuthUser();
+            } catch (refreshError) {
+              console.error(
+                "Payment succeeded, but refreshing the user profile failed:",
+                refreshError,
+              );
+            }
+
+            // 6. Navigate to the existing payment-success page.
+            router.push(`/payment?success=true&planId=${encodeURIComponent(plan.id)}`);
           } catch (err) {
+            setIsRedirecting(false);
             setErrorMessage(err.message || "Error confirming payment.");
           } finally {
             setLoadingPlan(null);
@@ -272,7 +302,9 @@ export default function PricingPage({ user: propUser }) {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 py-16 px-4 sm:px-6 lg:px-8">
+    <>
+      {isRedirecting && <PageLoader />}
+      <div className="min-h-screen bg-slate-50 py-16 px-4 sm:px-6 lg:px-8">
       <Script
         src="https://checkout.razorpay.com/v1/checkout.js"
         strategy="lazyOnload"
@@ -371,5 +403,6 @@ export default function PricingPage({ user: propUser }) {
         </div>
       </div>
     </div>
+    </>
   );
 }

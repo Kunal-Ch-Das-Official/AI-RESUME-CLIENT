@@ -7,7 +7,6 @@ import { useAuthStore } from "@/store/auth.store";
 import ResumeRenderer from "@/components/ResumeRenderer";
 import { COLOR_PALETTES, TEMPLATE_DEFINITIONS } from "@/lib/resume-data";
 import { buildResumeMultipartFormData } from "@/components/utils/resumeUploadHelper";
-import addResumeId from "@/helpers/addResumeId";
 import {
   deletePendingResumeDraft,
   getPendingResumeDraft,
@@ -25,13 +24,15 @@ import {
 import AtsScoreModal from "./AtsScoreModal";
 import { trackAiUsage, finalizeAiUsage } from "@/lib/trackAi";
 import ProductTour from "@/components/product-tour/ProductTour";
+import ButtonLoader from "../utils/button-loader/ButtonLoader";
 
 const PRINT_RESUME_TOUR_STEPS = [
   {
     element: '[data-tour="print-preview"]',
     popover: {
       title: "Review your finished resume",
-      description: "This is the final resume preview. Check spacing, content, and layout before printing or saving a PDF.",
+      description:
+        "This is the final resume preview. Check spacing, content, and layout before printing or saving a PDF.",
       side: "bottom",
       align: "center",
     },
@@ -40,7 +41,8 @@ const PRINT_RESUME_TOUR_STEPS = [
     element: '[data-tour="print-theme"]',
     popover: {
       title: "Choose your accent color",
-      description: "Select a color swatch to change the resume's theme. Your content stays the same while the accent styling updates.",
+      description:
+        "Select a color swatch to change the resume's theme. Your content stays the same while the accent styling updates.",
       side: "bottom",
       align: "center",
     },
@@ -49,7 +51,8 @@ const PRINT_RESUME_TOUR_STEPS = [
     element: '[data-tour="print-template"]',
     popover: {
       title: "Switch resume templates",
-      description: "Try another template to find the layout that best fits your career and the content in your resume.",
+      description:
+        "Try another template to find the layout that best fits your career and the content in your resume.",
       side: "bottom",
       align: "center",
     },
@@ -58,7 +61,8 @@ const PRINT_RESUME_TOUR_STEPS = [
     element: '[data-tour="print-ats"]',
     popover: {
       title: "Check ATS compatibility",
-      description: "Run the ATS score check to review how well your resume matches common applicant-tracking-system criteria. Availability depends on your credits.",
+      description:
+        "Run the ATS score check to review how well your resume matches common applicant-tracking-system criteria. Availability depends on your credits.",
       side: "bottom",
       align: "center",
     },
@@ -67,7 +71,8 @@ const PRINT_RESUME_TOUR_STEPS = [
     element: '[data-tour="print-polish"]',
     popover: {
       title: "Polish with AI",
-      description: "Use AI to improve resume wording. Review the result carefully, and use Revert Original if you want to restore the previous content.",
+      description:
+        "Use AI to improve resume wording. Review the result carefully, and use Revert Original if you want to restore the previous content.",
       side: "bottom",
       align: "center",
     },
@@ -76,7 +81,8 @@ const PRINT_RESUME_TOUR_STEPS = [
     element: '[data-tour="print-pdf"]',
     popover: {
       title: "Print or save as PDF",
-      description: "When the resume looks right, choose Print / PDF and use your browser's print dialog to save a PDF or print a copy.",
+      description:
+        "When the resume looks right, choose Print / PDF and use your browser's print dialog to save a PDF or print a copy.",
       side: "bottom",
       align: "end",
     },
@@ -161,12 +167,14 @@ export default function PrintResume({ resumeInfoId = null }) {
 
     const fetchResumeData = async () => {
       try {
+        console.log("=== FETCH RESUME DATA ===", { resumeInfoId });
         if (!resumeInfoId) {
           throw new Error("Resume ID is required to proceed.");
         }
 
         if (resumeInfoId === "draft") {
           const draft = await getPendingResumeDraft();
+          console.log("Loaded pending draft from storage:", draft);
           if (!draft?.resume) {
             throw new Error(
               "Your temporary resume draft could not be found. Return to the builder and click Proceed again.",
@@ -189,6 +197,10 @@ export default function PrintResume({ resumeInfoId = null }) {
           return;
         }
 
+        console.log(
+          "Fetching resume from URL:",
+          `${process.env.NEXT_PUBLIC_FETCH_RESUME_INFO_URL}/${resumeInfoId}`,
+        );
         const response = await fetch(
           `${process.env.NEXT_PUBLIC_FETCH_RESUME_INFO_URL}/${resumeInfoId}`,
           { method: "GET" },
@@ -202,6 +214,7 @@ export default function PrintResume({ resumeInfoId = null }) {
 
         const result = await response.json();
         const data = result.data || result;
+        console.log("Fetched resume result:", data);
         if (cancelled) return;
         setResumeInfo(data);
         setOriginalResumeInfo(data);
@@ -209,6 +222,7 @@ export default function PrintResume({ resumeInfoId = null }) {
         if (data?.templateName)
           setActiveTemplate(data.templateName.replace(/"/g, ""));
       } catch (err) {
+        console.error("Error fetching resume data:", err);
         if (!cancelled) setError(err?.message || "Unable to load resume.");
       } finally {
         if (!cancelled) setLoading(false);
@@ -228,6 +242,7 @@ export default function PrintResume({ resumeInfoId = null }) {
     setSaveError("");
 
     try {
+      console.log("=== TRIGGERING AI POLISH ===");
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_BACKEND_API_URL || ""}/api/v1/resumes/polish`,
         {
@@ -242,6 +257,7 @@ export default function PrintResume({ resumeInfoId = null }) {
       }
 
       const result = await response.json();
+      console.log("AI Polish result:", result);
       if (result?.resume) {
         if (!isPolished) {
           setOriginalResumeInfo(resumeInfo);
@@ -274,6 +290,7 @@ export default function PrintResume({ resumeInfoId = null }) {
   // Revert Polished Data Handler
   const handleRevertResume = async () => {
     if (!originalResumeInfo) return;
+    console.log("Reverting resume to original state");
     setResumeInfo(originalResumeInfo);
     setIsPolished(false);
 
@@ -290,6 +307,7 @@ export default function PrintResume({ resumeInfoId = null }) {
     setSaveError("");
 
     try {
+      console.log("=== TRIGGERING ATS CHECK ===");
       const targetRole =
         resumeInfo?.basicInfo?.headline || "Software Engineering";
       const response = await fetch(
@@ -309,6 +327,7 @@ export default function PrintResume({ resumeInfoId = null }) {
       }
 
       const result = await response.json();
+      console.log("ATS Check result:", result);
       setAtsReport(result.report);
       const currentResumeId =
         resumeInfo._id ||
@@ -326,13 +345,20 @@ export default function PrintResume({ resumeInfoId = null }) {
     }
   };
 
-  // components/PrintResume.jsx
+  // Print & Save Handler (Guaranteed DB Upload & User Linking)
   const handlePrintPdf = async () => {
     if (isSaving) return;
     setIsSaving(true);
     setSaveError("");
 
     try {
+      console.log("=== STARTING PRINT / PDF & DB UPLOAD WORKFLOW ===");
+
+      // 1. Fetch Logged-in User
+      console.log(
+        "Fetching logged-in user from:",
+        process.env.NEXT_PUBLIC_LOGGEDIN_USER,
+      );
       const authResponse = await fetch(process.env.NEXT_PUBLIC_LOGGEDIN_USER, {
         method: "GET",
         credentials: "include",
@@ -341,48 +367,181 @@ export default function PrintResume({ resumeInfoId = null }) {
       });
 
       if (!authResponse.ok) {
+        console.warn("User not authenticated. Redirecting to sign-in.");
         const returnTo = `${window.location.pathname}${window.location.search}`;
         window.sessionStorage.setItem("airesume-auth-return-to", returnTo);
         window.location.href = "/sign-in";
         return;
       }
 
-      const targetResumeId =
-        savedResumeId ||
-        resumeInfoId ||
-        resumeInfo?._id ||
-        resumeInfo?.id ||
-        "draft";
+      const authData = await authResponse.json();
+      console.log("Auth response data:", authData);
+      const storeUser = useAuthStore.getState()?.user;
 
-      // 1. Finalize AI features from Redis, persist to Mongo, and deduct credit via finalizeAiUsage
-      const finalizeResult = await finalizeAiUsage(targetResumeId);
+      const currentUserId =
+        authData?._id ||
+        authData?.id ||
+        authData?.userId ||
+        authData?.data?._id ||
+        authData?.data?.id ||
+        authData?.data?.userId ||
+        authData?.data?.user?._id ||
+        authData?.data?.user?.id ||
+        authData?.user?._id ||
+        authData?.user?.id ||
+        storeUser?._id ||
+        storeUser?.id;
 
-      if (!finalizeResult.ok) {
-        if (finalizeResult.status === 402) {
-          throw new Error(
-            "Insufficient resume credits. Please purchase tokens to print your AI-assisted resume.",
-          );
-        }
-        if (finalizeResult.status === 409) {
-          throw new Error(
-            "Finalization already in progress. Please retry in a moment.",
-          );
-        }
+      console.log("Resolved currentUserId:", currentUserId);
+
+      if (!currentUserId) {
         throw new Error(
-          finalizeResult.data?.message ||
-            "Failed to finalize resume AI deductions.",
+          "Unable to identify logged-in user. Please sign in again.",
         );
       }
 
-      // 2. Clear pending local draft storage
+      // 2. Prepare Payload (Strip local IDs and blob URLs so backend generates fresh DB record)
+      const cleanResumeInfo = JSON.parse(JSON.stringify(resumeInfo || {}));
+      delete cleanResumeInfo._id;
+      delete cleanResumeInfo.id;
+
+      if (cleanResumeInfo.avatar?.url?.startsWith("blob:")) {
+        delete cleanResumeInfo.avatar.url;
+        delete cleanResumeInfo.avatar.key;
+      }
+
+      const resumePayload = {
+        ...cleanResumeInfo,
+        themeColor: activeTheme,
+        templateName: activeTemplate,
+      };
+
+      const formData = buildResumeMultipartFormData(
+        resumePayload,
+        pendingFiles,
+      );
+
+      // NEXT_PUBLIC_* variables are embedded at build time. Keep the configured
+      // value when present, but use the documented same-origin proxy path as a
+      // fallback so a missing build-time variable cannot silently stop the flow.
+      const uploadUrl =
+        process.env.NEXT_PUBLIC_RESUME_DATA_UPLOAD_TO_DB_URL ||
+        "/api/backend/resume/upload-resume";
+      if (!uploadUrl) {
+        throw new Error(
+          "Resume upload endpoint is not configured. Please contact support.",
+        );
+      }
+
+      console.log("Triggering database upload POST to:", uploadUrl);
+
+      // 3. MANDATORY POST #1: Upload Resume Data to DB.
+      // The backend expects multipart/form-data with each resume schema
+      // property as a JSON string, plus only the supported file fields.
+      // Do not set Content-Type manually; the browser adds the boundary.
+      const uploadResponse = await fetch(uploadUrl, {
+        method: "POST",
+        credentials: "include",
+        headers: { Accept: "application/json" },
+        body: formData,
+      });
+
+      const uploadResult = await uploadResponse.json();
+      console.log(
+        "Database upload response status:",
+        uploadResponse.status,
+        uploadResult,
+      );
+
+      if (!uploadResponse.ok) {
+        throw new Error(
+          getResponseMessage(
+            uploadResult,
+            "Failed to upload resume data to the database.",
+          ),
+        );
+      }
+
+      const freshResumeId =
+        uploadResult?.data?._id ||
+        uploadResult?.data?.id ||
+        uploadResult?._id ||
+        uploadResult?.id;
+
+      console.log("Fresh Database Resume ID received:", freshResumeId);
+
+      if (!freshResumeId) {
+        throw new Error(
+          "Resume uploaded, but no record ID was returned by the database.",
+        );
+      }
+
+      setSavedResumeId(freshResumeId);
+
+      // 4. MANDATORY POST #2: Add Resume ID to User Profile
+      console.log(
+        "Triggering user table update POST to:",
+        process.env.NEXT_PUBLIC_ADD_MY_RESUME_URL,
+        {
+          resumeInfoId: freshResumeId,
+          userId: currentUserId,
+        },
+      );
+
+      const addResumeUrl =
+        process.env.NEXT_PUBLIC_ADD_MY_RESUME_URL ||
+        "/api/backend/auth/add-resume-id";
+      const addResumeResponse = await fetch(addResumeUrl, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          resumeInfoId: freshResumeId,
+          userId: currentUserId,
+        }),
+      });
+      let userTableResult;
+      try {
+        userTableResult = await addResumeResponse.json();
+      } catch {
+        userTableResult = null;
+      }
+      console.log("User table update response:", {
+        status: addResumeResponse.status,
+        result: userTableResult,
+      });
+
+      if (!addResumeResponse.ok || userTableResult?.success !== true) {
+        throw new Error(
+          userTableResult?.message ||
+            "Resume was saved, but it could not be linked to your user profile.",
+        );
+      }
+
+      // 5. Optional AI Finalization & Cleanup
+      try {
+        console.log("Finalizing AI usage for ID:", freshResumeId);
+        await finalizeAiUsage(freshResumeId);
+      } catch (aiErr) {
+        console.warn("AI finalization skipped or failed:", aiErr);
+      }
+
       await deletePendingResumeDraft().catch((storageError) => {
         console.warn("Could not clear temporary draft:", storageError);
       });
 
-      // 3. Open Print Window
+      console.log(
+        "=== WORKFLOW COMPLETE. Both database requests succeeded; opening print dialog ===",
+      );
+
+      // Never invoke the browser print dialog until both required POSTs
+      // have completed successfully.
       window.print();
     } catch (err) {
-      console.error("Resume save/print error:", err);
+      console.error("Resume save/print workflow error:", err);
       setSaveError(
         err?.message ||
           "Unable to save your resume. Please try again before printing.",
@@ -392,17 +551,17 @@ export default function PrintResume({ resumeInfoId = null }) {
     }
   };
 
-  printHandlerRef.current = handlePrintPdf;
-  useEffect(() => {
-    const handleKeyDown = (event) => {
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "p") {
-        event.preventDefault();
-        printHandlerRef.current?.();
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  // printHandlerRef.current = handlePrintPdf;
+  // useEffect(() => {
+  //   const handleKeyDown = (event) => {
+  //     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "p") {
+  //       event.preventDefault();
+  //       printHandlerRef.current?.();
+  //     }
+  //   };
+  //   window.addEventListener("keydown", handleKeyDown);
+  //   return () => window.removeEventListener("keydown", handleKeyDown);
+  // }, []);
 
   if (loading) {
     return (
@@ -442,7 +601,10 @@ export default function PrintResume({ resumeInfoId = null }) {
 
           <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto justify-between sm:justify-end">
             {/* Theme Selector */}
-            <div data-tour="print-theme" className="flex items-center gap-2 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200">
+            <div
+              data-tour="print-theme"
+              className="flex items-center gap-2 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200"
+            >
               <IconPalette size={14} className="text-slate-500 shrink-0" />
               <span className="text-[11px] font-semibold text-slate-700 hidden md:inline">
                 Theme:
@@ -463,7 +625,10 @@ export default function PrintResume({ resumeInfoId = null }) {
             </div>
 
             {/* Template Selector */}
-            <div data-tour="print-template" className="flex items-center gap-1.5 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200">
+            <div
+              data-tour="print-template"
+              className="flex items-center gap-1.5 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200"
+            >
               <IconLayout size={14} className="text-slate-500 shrink-0" />
               <select
                 value={activeTemplate}
@@ -616,8 +781,7 @@ export default function PrintResume({ resumeInfoId = null }) {
             >
               {isPolishing ? (
                 <>
-                  <div className="h-3 w-3 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" />
-                  <span>Polishing...</span>
+                  <span>Please wait!...</span>
                 </>
               ) : showPolishedToast ? (
                 <>

@@ -9,6 +9,7 @@ import {
   IconChartBar,
   IconCircleCheck,
 } from "@tabler/icons-react";
+import ButtonLoader from "../utils/button-loader/ButtonLoader";
 
 export default function AtsScoreModal({ isOpen, onClose, report, isLoading }) {
   if (!isOpen) return null;
@@ -59,7 +60,8 @@ export default function AtsScoreModal({ isOpen, onClose, report, isLoading }) {
                 ATS Compatibility & Parser Audit
               </h2>
               <p className="text-xs text-slate-500">
-                Automated score based on impact, action verbs, and keyword density
+                Automated score based on impact, action verbs, and keyword
+                density
               </p>
             </div>
           </div>
@@ -76,12 +78,13 @@ export default function AtsScoreModal({ isOpen, onClose, report, isLoading }) {
         <div className="flex-1 overflow-y-auto p-6 scroll-slim">
           {isLoading ? (
             <div className="flex flex-col items-center justify-center py-20 text-center">
-              <div className="h-10 w-10 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" />
+              <ButtonLoader backgroundColor="#000" />
               <p className="mt-4 text-sm font-semibold text-slate-800">
                 Evaluating against ATS Parsers...
               </p>
               <p className="mt-1 text-xs text-slate-400">
-                Auditing section headers, metrics density, and keyword distribution
+                Auditing section headers, metrics density, and keyword
+                distribution
               </p>
             </div>
           ) : report ? (
@@ -90,12 +93,16 @@ export default function AtsScoreModal({ isOpen, onClose, report, isLoading }) {
               <div className="flex flex-col sm:flex-row items-center justify-between gap-6 rounded-2xl border border-slate-200/90 bg-gradient-to-br from-slate-50 to-indigo-50/20 p-5">
                 <div className="flex items-center gap-4">
                   <div
-                    className={`flex h-20 w-20 flex-col items-center justify-center rounded-2xl border-2 bg-white shadow-sm ${badge.ring}`}
+                    className={`flex h-24 w-24 flex-col items-center justify-center rounded-2xl border-2 bg-white shadow-sm ${badge.ring}`}
                   >
-                    <span className={`text-3xl font-black ${getScoreColor(score)}`}>
+                    <span
+                      className={`text-3xl font-black ${getScoreColor(score)}`}
+                    >
                       {score}
                     </span>
-                    <span className="text-[10px] font-bold text-slate-400">/ 100</span>
+                    <span className="text-[10px] font-bold text-slate-400">
+                      / 100
+                    </span>
                   </div>
                   <div>
                     <span
@@ -114,19 +121,23 @@ export default function AtsScoreModal({ isOpen, onClose, report, isLoading }) {
 
                 {/* Sub-Category Metrics */}
                 <div className="grid grid-cols-2 gap-2 w-full sm:w-auto">
-                  {Object.entries(report.categoryScores || {}).map(([key, val]) => (
-                    <div
-                      key={key}
-                      className="rounded-xl border border-slate-200/80 bg-white p-2.5 shadow-sm"
-                    >
-                      <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                        {key.replace(/([A-Z])/g, " $1")}
+                  {Object.entries(report.categoryScores || {}).map(
+                    ([key, val]) => (
+                      <div
+                        key={key}
+                        className="rounded-xl border border-slate-200/80 bg-white p-2.5 shadow-sm"
+                      >
+                        <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                          {key.replace(/([A-Z])/g, " $1")}
+                        </div>
+                        <div
+                          className={`mt-0.5 text-sm font-bold ${getScoreColor(val)}`}
+                        >
+                          {val}%
+                        </div>
                       </div>
-                      <div className={`mt-0.5 text-sm font-bold ${getScoreColor(val)}`}>
-                        {val}%
-                      </div>
-                    </div>
-                  ))}
+                    ),
+                  )}
                 </div>
               </div>
 

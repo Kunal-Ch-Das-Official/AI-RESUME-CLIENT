@@ -2,7 +2,6 @@
 import { useAuthStore, refreshAuthUser } from "@/store/auth.store";
 
 const DRAFT_ID_KEY = "airesume-ai-draft-id";
-const PLACEHOLDER_IDS = new Set(["", "draft", "demo-resume-id"]);
 
 let finalizeInFlight = null;
 
@@ -23,7 +22,7 @@ function generateId() {
 function getUserId() {
   const state = useAuthStore.getState();
 
-  return state.user?.id || state.user?._id || state.id || "";
+  return state.user.id
 }
 
 /**
@@ -78,12 +77,7 @@ function toLedgerResumeId(_resumeId) {
  */
 export async function trackAiUsage(resumeId, featureKey) {
   try {
-    const backendBase =
-      process.env.NEXT_PUBLIC_BACKEND_API_URL || "";
-
-    const url =
-      process.env.NEXT_PUBLIC_TRACK_AI_USAGE_URL ||
-      `${backendBase}/api/v1/track/resumes/track-ai`;
+    const url = process.env.NEXT_PUBLIC_TRACK_AI_USAGE_URL
 
     const userId = getUserId();
     const ledgerId = toLedgerResumeId(resumeId);
@@ -136,13 +130,7 @@ export function finalizeAiUsage(resumeId) {
 
   finalizeInFlight = (async () => {
     try {
-      const backendBase =
-        process.env.NEXT_PUBLIC_BACKEND_API_URL || "";
-
-      const url =
-        process.env.NEXT_PUBLIC_FINALIZE_AI_USAGE_URL ||
-        process.env.NEXT_PUBLIC_FINALIZE_DEDUCT_URL ||
-        `${backendBase}/api/v1/track/resumes/finalize-and-deduct`;
+      const url = process.env.NEXT_PUBLIC_FINALIZE_DEDUCT_URL
 
       const userId = getUserId();
       const id =
