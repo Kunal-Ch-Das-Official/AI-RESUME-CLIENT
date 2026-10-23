@@ -5137,11 +5137,25 @@ button { cursor: pointer; }
 .resume-print-root { width: 794px; min-height: 1123px; margin: 0 auto; }
 .resume-preview-wrap { transform-origin: top center; transition: transform 180ms ease; }
 @media print {
-  header, footer, .no-print, .print-hidden { display: none !important; }
-  body { background: #fff !important; }
-  .print-area { display: block !important; }
-  .resume-canvas { box-shadow: none !important; }
+  .no-print,
+  .print-hidden {
+    display: none !important;
+  }
+
+  body {
+    background: #fff !important;
+  }
+
+  .print-area {
+    display: block !important;
+  }
+
+  .resume-canvas {
+    box-shadow: none !important;
+  }
 }
+
+
 
 
 .is_required{
@@ -5166,13 +5180,37 @@ button { cursor: pointer; }
 
 
 .token_viewer_green {
-  background-color: rgb(71, 234, 71);
+  background-color: #def5b4;
   color: #000;
-  border: 1px solid rgb(89, 174, 89);
+  border: 1px solid rgb(220, 255, 174);
 }
 
 .token_viewer_red {
   background-color: rgb(234, 71, 71);
   color: #fff;
   border: 1px solid rgb(194, 0, 0);
+}
+
+
+.border-color {
+  color: #0284c7;
+  border: 1px solid #0284c7;
+}
+
+
+.custom-addition {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: start;
+  gap: 4px;
+  text-align: left;
+}
+
+.custom-addition-child {
+  text-transform: none;
+}
+
+.si-background-color{
+  background-color: #282525ec;
 }

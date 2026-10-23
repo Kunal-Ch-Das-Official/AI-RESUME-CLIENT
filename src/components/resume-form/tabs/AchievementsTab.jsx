@@ -74,7 +74,9 @@ export default function AchievementsTab({
   setPendingFiles,
 }) {
   const router = useRouter();
-  const { resumeCredits, isInitialized } = useAuthStore();
+  // Select only what is needed so unrelated auth-store updates don't re-render the whole form.
+  const resumeCredits = useAuthStore((state) => state.resumeCredits);
+  const isInitialized = useAuthStore((state) => state.isInitialized);
   const [isBtnHovered, setIsBtnHovered] = useState(false);
   // Allow generation only if store hydration is complete and credits > 0
   const hasCredits = isInitialized ? Number(resumeCredits) > 0 : false;

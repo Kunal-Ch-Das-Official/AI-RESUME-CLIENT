@@ -49,7 +49,9 @@ const EMPTY_AI_STATE = { loading: false, error: "", options: [] };
 
 export default function ExperienceTab({ resume, setResume, update }) {
   const router = useRouter();
-  const { resumeCredits, isInitialized } = useAuthStore();
+  // Select only what is needed so unrelated auth-store updates don't re-render the whole form.
+  const resumeCredits = useAuthStore((state) => state.resumeCredits);
+  const isInitialized = useAuthStore((state) => state.isInitialized);
   const [isBtnHovered, setIsBtnHovered] = useState(false);
   const hasCredits = isInitialized ? Number(resumeCredits) > 0 : false;
 

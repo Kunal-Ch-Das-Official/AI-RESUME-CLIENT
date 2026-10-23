@@ -34,6 +34,23 @@ const DEFAULT_TITLES = {
   hobbies: "Hobbies",
 };
 
+// Resume content is authored as rich text. Remove executable and remote-embed
+// markup before it reaches dangerouslySetInnerHTML; formatting tags and lists
+// remain available for exported resumes.
+function sanitizeRichText(value) {
+  return String(value || "")
+    .replace(/<\/?(script|style|iframe|object|embed|form)[^>]*>/gi, "")
+    .replace(/\son\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, "")
+    .replace(/\s(href|src)\s*=\s*(["'])\s*javascript:[\s\S]*?\2/gi, "");
+}
+
+function safeUrl(value) {
+  const url = String(value || "").trim();
+  if (!url) return "";
+  if (/^https?:\/\//i.test(url)) return url;
+  return "";
+}
+
 function normalizeCustomAttributes(value) {
   if (!Array.isArray(value)) return [];
 
@@ -69,18 +86,16 @@ function collectCustomAttributes(data) {
     const collection = data?.[root]?.[collectionKey] || {};
 
     Object.entries(collection).forEach(([id, item]) => {
-      normalizeCustomAttributes(item?.customAttributes).forEach(
-        (attribute) => {
-          result.push({
-            ...attribute,
-            source:
-              item?.jobTitle ||
-              item?.name ||
-              item?.overview ||
-              `${sourceLabel} ${id}`,
-          });
-        },
-      );
+      normalizeCustomAttributes(item?.customAttributes).forEach((attribute) => {
+        result.push({
+          ...attribute,
+          source:
+            item?.jobTitle ||
+            item?.name ||
+            item?.overview ||
+            `${sourceLabel} ${id}`,
+        });
+      });
     });
   });
 
@@ -141,10 +156,15 @@ function hasSection(data, root) {
   return false;
 }
 
-function SectionHeading({ title, theme, dark = false }) {
+function SectionHeading({
+  title,
+  theme,
+  dark = false,
+  templateName = "clean-ats-optimizer",
+}) {
   return (
     <h2
-      className={`text-xs font-bold uppercase tracking-wider border-b pb-1 mb-3 ${
+      className={`text-xs font-bold uppercase tracking-wider border-b pb-1 mb-3 ${templateName === "entry-level-graduate" || templateName === "clean-ats-optimizer" ? "mt-8" : ""} ${
         dark
           ? "border-zinc-700 text-zinc-100"
           : "border-slate-300 text-slate-900"
@@ -157,19 +177,15 @@ function SectionHeading({ title, theme, dark = false }) {
 }
 
 function LinkTag({ href, compact, children, className = "" }) {
-  if (!href) return null;
+  const safeHref = safeUrl(href);
+  if (!safeHref) return null;
 
   if (compact) {
     return <span className={className}>{children}</span>;
   }
 
   return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noreferrer"
-      className={className}
-    >
+    <a href={safeHref} target="_blank" rel="noreferrer" className={className}>
       {children}
     </a>
   );
@@ -190,13 +206,11 @@ export default function ResumeExtraSections({
       const aOrder = getSectionOrder(data, a, SECTION_ORDER[a]);
       const bOrder = getSectionOrder(data, b, SECTION_ORDER[b]);
 
-      return (
-        aOrder - bOrder ||
-        SECTION_ORDER[a] - SECTION_ORDER[b]
-      );
+      return aOrder - bOrder || SECTION_ORDER[a] - SECTION_ORDER[b];
     });
 
-  if (sections.length === 0) return null;
+  const customAttributes = collectCustomAttributes(data);
+  if (sections.length === 0 && customAttributes.length === 0) return null;
 
   const text = dark ? "text-zinc-300" : "text-slate-700";
   const muted = dark ? "text-zinc-400" : "text-slate-500";
@@ -216,13 +230,19 @@ export default function ResumeExtraSections({
             title={title}
             theme={theme}
             dark={dark}
+            templateName={data.templateName}
           />
 
+          {section.subject && (
+            <p className={`mb-1 text-xs font-semibold ${strong}`}>
+              {section.subject}
+            </p>
+          )}
           {section.objective && (
             <div
               className={`ql-editor clean-editor text-xs leading-relaxed ${text}`}
               dangerouslySetInnerHTML={{
-                __html: section.objective,
+                __html: sanitizeRichText(section.objective),
               }}
             />
           )}
@@ -232,31 +252,18 @@ export default function ResumeExtraSections({
 
     // Work Experience
     if (root === "workExperience") {
-      const companies = sortByPriority(
-        toArray(section.companies),
-      );
+      const companies = sortByPriority(toArray(section.companies));
 
       return (
         <div key={root} className="mb-6" style={{ order }}>
-          <SectionHeading
-            title={title}
-            theme={theme}
-            dark={dark}
-          />
+          <SectionHeading title={title} theme={theme} dark={dark} />
 
           {companies.map((company, index) => (
-            <div
-              key={company._id || index}
-              className="mb-4 text-xs"
-            >
-              <div
-                className={`flex justify-between gap-4 font-bold ${strong}`}
-              >
+            <div key={company._id || index} className="mb-4 text-xs">
+              <div className={`flex justify-between gap-4 font-bold ${strong}`}>
                 <span>
                   {company.jobTitle}
-                  {company.companyName
-                    ? ` — ${company.companyName}`
-                    : ""}
+                  {company.companyName ? ` — ${company.companyName}` : ""}
                 </span>
 
                 <span className={`font-normal ${muted}`}>
@@ -267,23 +274,54 @@ export default function ResumeExtraSections({
                 </span>
               </div>
 
-              {company.jobLocation && (
-                <div className={muted}>
-                  {company.jobLocation}
-                </div>
-              )}
+              <div id="job-feat" className="flex justify-between w-full">
+                {company.jobLocation && (
+                  <div className={muted}>
+                    <span>{company.jobLocation}</span>
+                  </div>
+                )}
 
-              {company.responsibility?.length > 0 && (
-                <ul
-                  className={`mt-1 list-disc list-inside space-y-0.5 ${text}`}
-                >
-                  {company.responsibility.map(
-                    (item, itemIndex) => (
-                      <li key={itemIndex}>{item}</li>
-                    ),
+                <div className="custom-addition">
+                  {company.jobConditions && (
+                    <div className="custom-addition-child">
+                      {String(company.jobConditions)
+                        .toLowerCase()
+                        .replace(/\b\w/g, (char) => char.toUpperCase())}
+                    </div>
                   )}
-                </ul>
-              )}
+
+                  <span>|</span>
+
+                  {company.jobTypes && (
+                    <div className="custom-addition-child">
+                      {String(company.jobTypes)
+                        .replaceAll("_", " ")
+                        .toLowerCase()
+                        .replace(/\b\w/g, (char) => char.toUpperCase())}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {company.responsibility &&
+                (Array.isArray(company.responsibility) ? (
+                  <ul
+                    className={`mt-1 list-disc list-inside space-y-0.5 ${text}`}
+                  >
+                    {company.responsibility
+                      .filter(Boolean)
+                      .map((item, itemIndex) => (
+                        <li key={itemIndex}>{item}</li>
+                      ))}
+                  </ul>
+                ) : (
+                  <div
+                    className={`ql-editor clean-editor mt-1 ${text}`}
+                    dangerouslySetInnerHTML={{
+                      __html: sanitizeRichText(company.responsibility),
+                    }}
+                  />
+                ))}
             </div>
           ))}
         </div>
@@ -292,26 +330,15 @@ export default function ResumeExtraSections({
 
     // Projects
     if (root === "projects") {
-      const projects = sortByPriority(
-        toArray(section.projects),
-      );
+      const projects = sortByPriority(toArray(section.projects));
 
       return (
         <div key={root} className="mb-6" style={{ order }}>
-          <SectionHeading
-            title={title}
-            theme={theme}
-            dark={dark}
-          />
+          <SectionHeading title={title} theme={theme} dark={dark} />
 
           {projects.map((project, index) => (
-            <div
-              key={project._id || index}
-              className="mb-4 text-xs"
-            >
-              <div
-                className={`flex justify-between gap-3 font-bold ${strong}`}
-              >
+            <div key={project._id || index} className="mb-4 text-xs">
+              <div className={`flex justify-between gap-3 font-bold ${strong}`}>
                 <span>
                   {project.name ||
                     project.title ||
@@ -332,9 +359,12 @@ export default function ResumeExtraSections({
               </div>
 
               {project.description && (
-                <p className={`mt-1 ${text}`}>
-                  {project.description}
-                </p>
+                <div
+                  className={`ql-editor clean-editor mt-1 ${text}`}
+                  dangerouslySetInnerHTML={{
+                    __html: sanitizeRichText(project.description),
+                  }}
+                />
               )}
 
               {project.projectUrl && (
@@ -348,8 +378,7 @@ export default function ResumeExtraSections({
                 </LinkTag>
               )}
 
-              {(project.techStack?.length ||
-                project.skills?.length) > 0 && (
+              {(project.techStack?.length || project.skills?.length) > 0 && (
                 <div className={`mt-1 ${muted}`}>
                   {[
                     ...(project.techStack || []),
@@ -365,26 +394,15 @@ export default function ResumeExtraSections({
 
     // Education
     if (root === "educations") {
-      const qualifications = sortByPriority(
-        toArray(section.qualifications),
-      );
+      const qualifications = sortByPriority(toArray(section.qualifications));
 
       return (
         <div key={root} className="mb-6" style={{ order }}>
-          <SectionHeading
-            title={title}
-            theme={theme}
-            dark={dark}
-          />
+          <SectionHeading title={title} theme={theme} dark={dark} />
 
           {qualifications.map((qualification, index) => (
-            <div
-              key={qualification._id || index}
-              className="mb-3 text-xs"
-            >
-              <div
-                className={`flex justify-between gap-4 font-bold ${strong}`}
-              >
+            <div key={qualification._id || index} className="mb-3 text-xs">
+              <div className={`flex justify-between gap-4 font-bold ${strong}`}>
                 <span>{qualification.institutionName}</span>
 
                 <span className={`font-normal ${muted}`}>
@@ -396,15 +414,11 @@ export default function ResumeExtraSections({
               </div>
 
               {qualification.description && (
-                <p className={text}>
-                  {qualification.description}
-                </p>
+                <p className={text}>{qualification.description}</p>
               )}
 
               {qualification.percentage && (
-                <p className={muted}>
-                  {qualification.percentage}
-                </p>
+                <p className={muted}>{qualification.percentage}</p>
               )}
             </div>
           ))}
@@ -414,29 +428,16 @@ export default function ResumeExtraSections({
 
     // Certifications
     if (root === "certifications") {
-      const certificates = sortByPriority(
-        toArray(section.certificates),
-      );
+      const certificates = sortByPriority(toArray(section.certificates));
 
       return (
         <div key={root} className="mb-6" style={{ order }}>
-          <SectionHeading
-            title={title}
-            theme={theme}
-            dark={dark}
-          />
+          <SectionHeading title={title} theme={theme} dark={dark} />
 
           {certificates.map((certificate, index) => (
-            <div
-              key={certificate._id || index}
-              className="mb-3 text-xs"
-            >
-              <div
-                className={`flex justify-between gap-3 font-bold ${strong}`}
-              >
-                <span>
-                  {certificate.overview || "Certificate"}
-                </span>
+            <div key={certificate._id || index} className="mb-3 text-xs">
+              <div className={`flex justify-between gap-3 font-bold ${strong}`}>
+                <span>{certificate.overview || "Certificate"}</span>
 
                 {certificate.duration && (
                   <span className={`font-normal ${muted}`}>
@@ -482,25 +483,15 @@ export default function ResumeExtraSections({
     if (root === "skills") {
       return (
         <div key={root} className="mb-6" style={{ order }}>
-          <SectionHeading
-            title={title}
-            theme={theme}
-            dark={dark}
-          />
+          <SectionHeading title={title} theme={theme} dark={dark} />
 
           <div className="space-y-1 text-xs">
-            {Object.entries(section.skills || {}).map(
-              ([category, values]) => (
-                <p key={category} className={text}>
-                  <strong className={strong}>
-                    {category}:
-                  </strong>{" "}
-                  {Array.isArray(values)
-                    ? values.join(", ")
-                    : values}
-                </p>
-              ),
-            )}
+            {Object.entries(section.skills || {}).map(([category, values]) => (
+              <p key={category} className={text}>
+                <strong className={strong}>{category}:</strong>{" "}
+                {Array.isArray(values) ? values.join(", ") : values}
+              </p>
+            ))}
           </div>
         </div>
       );
@@ -508,25 +499,17 @@ export default function ResumeExtraSections({
 
     // Publications
     if (root === "publications") {
-      const publications = sortByPriority(
-        toArray(section.publications),
-      );
+      const publications = sortByPriority(toArray(section.publications));
 
       return (
         <div
           key={root}
           className={`mb-6 ${
-            data?.templateName === "clean-ats-optimizer"
-              ? "mt-4"
-              : ""
+            data?.templateName === "clean-ats-optimizer" ? "mt-4" : ""
           }`}
           style={{ order }}
         >
-          <SectionHeading
-            title={title}
-            theme={theme}
-            dark={dark}
-          />
+          <SectionHeading title={title} theme={theme} dark={dark} />
 
           <div className={`space-y-2 text-xs ${text}`}>
             {publications.map((publication, index) => (
@@ -569,31 +552,24 @@ export default function ResumeExtraSections({
 
     // Awards and Achievements
     if (root === "awardsAndAchievements") {
-      const achievements = sortByPriority(
-        section.achievements || [],
-      );
+      const achievements = sortByPriority(section.achievements || []);
 
       return (
         <div key={root} className="mb-6" style={{ order }}>
-          <SectionHeading
-            title={title}
-            theme={theme}
-            dark={dark}
-          />
+          <SectionHeading title={title} theme={theme} dark={dark} />
 
           <div className="space-y-3 text-xs">
             {achievements.map((achievement, index) => (
               <div key={index}>
                 <div className={`font-bold ${strong}`}>
-                  {achievement.title ||
-                    `Achievement ${index + 1}`}
+                  {achievement.title || `Achievement ${index + 1}`}
                 </div>
 
                 {achievement.description && (
                   <div
                     className="ql-editor clean-editor"
                     dangerouslySetInnerHTML={{
-                      __html: achievement.description,
+                      __html: sanitizeRichText(achievement.description),
                     }}
                   />
                 )}
@@ -609,19 +585,18 @@ export default function ResumeExtraSections({
                   </LinkTag>
                 )}
 
-                {achievement.documents?.map(
-                  (document, documentIndex) =>
-                    document?.accessUrl?.url ? (
-                      <LinkTag
-                        key={documentIndex}
-                        href={document.accessUrl.url}
-                        compact={compact}
-                        className="ml-2 underline"
-                        style={{ color: theme?.accent }}
-                      >
-                        {document.title || "Document"}
-                      </LinkTag>
-                    ) : null,
+                {achievement.documents?.map((document, documentIndex) =>
+                  document?.accessUrl?.url ? (
+                    <LinkTag
+                      key={documentIndex}
+                      href={document.accessUrl.url}
+                      compact={compact}
+                      className="ml-2 underline"
+                      style={{ color: theme?.accent }}
+                    >
+                      {document.title || "Document"}
+                    </LinkTag>
+                  ) : null,
                 )}
               </div>
             ))}
@@ -632,26 +607,15 @@ export default function ResumeExtraSections({
 
     // Open Source
     if (root === "openSource") {
-      const contributions = sortByPriority(
-        toArray(section.contributions),
-      );
+      const contributions = sortByPriority(toArray(section.contributions));
 
       return (
         <div key={root} className="mb-6" style={{ order }}>
-          <SectionHeading
-            title={title}
-            theme={theme}
-            dark={dark}
-          />
+          <SectionHeading title={title} theme={theme} dark={dark} />
 
           {contributions.map((contribution, index) => (
-            <div
-              key={contribution._id || index}
-              className="mb-3 text-xs"
-            >
-              <div
-                className={`flex justify-between gap-3 font-bold ${strong}`}
-              >
+            <div key={contribution._id || index} className="mb-3 text-xs">
+              <div className={`flex justify-between gap-3 font-bold ${strong}`}>
                 <span>{contribution._id}</span>
 
                 {contribution.duration && (
@@ -665,7 +629,7 @@ export default function ResumeExtraSections({
                 <div
                   className="ql-editor clean-editor"
                   dangerouslySetInnerHTML={{
-                    __html: contribution.description,
+                    __html: sanitizeRichText(contribution.description),
                   }}
                 />
               )}
@@ -690,23 +654,15 @@ export default function ResumeExtraSections({
     if (root === "languageProficiency") {
       return (
         <div key={root} className="mb-6" style={{ order }}>
-          <SectionHeading
-            title={title}
-            theme={theme}
-            dark={dark}
-          />
+          <SectionHeading title={title} theme={theme} dark={dark} />
 
           <div className="grid gap-1 text-xs sm:grid-cols-2">
-            {(section.languageKnows || []).map(
-              (language, index) => (
-                <div key={index} className={text}>
-                  <strong className={strong}>
-                    {language.languageName}
-                  </strong>{" "}
-                  — {language.proficiencyOutOfTen}/10
-                </div>
-              ),
-            )}
+            {(section.languageKnows || []).map((language, index) => (
+              <div key={index} className={text}>
+                <strong className={strong}>{language.languageName}</strong> —{" "}
+                {language.proficiencyOutOfTen}/10
+              </div>
+            ))}
           </div>
         </div>
       );
@@ -714,33 +670,24 @@ export default function ResumeExtraSections({
 
     // Hobbies and other entries
     const hobbyEntries = Object.entries(section).filter(
-      ([key]) =>
-        key !== "priority" && key !== "sectionTitle",
+      ([key]) => key !== "priority" && key !== "sectionTitle",
     );
 
     return (
       <div key={root} className="mb-6" style={{ order }}>
-        <SectionHeading
-          title={title}
-          theme={theme}
-          dark={dark}
-        />
+        <SectionHeading title={title} theme={theme} dark={dark} />
 
         <div className="grid gap-2 text-xs sm:grid-cols-2">
           {hobbyEntries.map(([name, value]) => (
             <div key={name} className={text}>
               <strong className={strong}>{name}:</strong>{" "}
-              {Array.isArray(value)
-                ? value.join(", ")
-                : String(value ?? "")}
+              {Array.isArray(value) ? value.join(", ") : String(value ?? "")}
             </div>
           ))}
         </div>
       </div>
     );
   };
-
-  const customAttributes = collectCustomAttributes(data);
 
   return (
     <>
@@ -763,9 +710,7 @@ export default function ResumeExtraSections({
                 }
                 className={text}
               >
-                <strong className={strong}>
-                  {attribute.key}:
-                </strong>{" "}
+                <strong className={strong}>{attribute.key}:</strong>{" "}
                 {String(attribute.value)}
               </div>
             ))}

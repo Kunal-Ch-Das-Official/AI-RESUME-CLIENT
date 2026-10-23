@@ -107,6 +107,38 @@ function getResponseMessage(result, fallback) {
   return result?.message || result?.error || details || fallback;
 }
 
+async function waitForPrintAssets(root) {
+  const images = Array.from(root.querySelectorAll("img"));
+
+  await Promise.all(
+    images.map(async (image) => {
+      if (!image.complete) {
+        await new Promise((resolve) => {
+          image.addEventListener("load", resolve, { once: true });
+          image.addEventListener("error", resolve, { once: true });
+        });
+      }
+
+      if (typeof image.decode === "function") {
+        try {
+          await image.decode();
+        } catch {
+          // Broken/unavailable images must not block printing.
+        }
+      }
+    }),
+  );
+
+  if (document.fonts?.ready) {
+    await document.fonts.ready;
+  }
+
+  // Allow the browser to paint decoded images before opening print preview.
+  await new Promise((resolve) =>
+    requestAnimationFrame(() => requestAnimationFrame(resolve)),
+  );
+}
+
 export default function PrintResume({ resumeInfoId = null }) {
   const router = useRouter();
   const { resumeCredits, isInitialized } = useAuthStore();
@@ -537,8 +569,13 @@ export default function PrintResume({ resumeInfoId = null }) {
         "=== WORKFLOW COMPLETE. Both database requests succeeded; opening print dialog ===",
       );
 
-      // Never invoke the browser print dialog until both required POSTs
-      // have completed successfully.
+      const printableResume = document.getElementById("printable-resume-area");
+
+      if (!printableResume) {
+        throw new Error("The printable resume area could not be found.");
+      }
+
+      await waitForPrintAssets(printableResume);
       window.print();
     } catch (err) {
       console.error("Resume save/print workflow error:", err);
@@ -877,23 +914,65 @@ export default function PrintResume({ resumeInfoId = null }) {
 
       <style jsx global>{`
         @media print {
-          body * {
-            visibility: hidden;
+          @page {
+            size: A4;
+            margin: 0;
           }
-          #printable-resume-area,
-          #printable-resume-area * {
-            visibility: visible;
-          }
-          #printable-resume-area {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100% !important;
-            transform: none !important;
+
+          html,
+          body {
+            width: 210mm !important;
+            min-height: 297mm !important;
             margin: 0 !important;
             padding: 0 !important;
+            background: #fff !important;
+          }
+
+          body * {
+            visibility: hidden !important;
+          }
+
+          #printable-resume-area,
+          #printable-resume-area * {
+            visibility: visible !important;
+          }
+
+          #printable-resume-area {
+            position: absolute !important;
+            inset: 0 auto auto 0 !important;
+            width: 210mm !important;
+            min-height: 297mm !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            transform: none !important;
+            overflow: visible !important;
+            box-shadow: none !important;
+            background: #fff !important;
+          }
+
+          #printable-resume-area .resume-canvas {
+            width: 210mm !important;
+            min-height: 297mm !important;
+            margin: 0 !important;
+            overflow: visible !important;
             box-shadow: none !important;
           }
+
+          #printable-resume-area img {
+            max-width: 100% !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+
+          #printable-resume-area header,
+          #printable-resume-area header * {
+            visibility: visible !important;
+          }
+
+          #printable-resume-area header {
+            display: block !important;
+          }
+
           body {
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;

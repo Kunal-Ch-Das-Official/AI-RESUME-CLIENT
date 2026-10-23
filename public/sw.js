@@ -2,7 +2,9 @@
  * Deliberately never caches API, authentication, payment, or user-specific responses.
  */
 const CACHE_PREFIX = "ai-resume-pwa";
-const STATIC_CACHE = `${CACHE_PREFIX}-static-v1`;
+// Bump when the worker strategy changes so clients discard bundles cached by
+// earlier versions of the app.
+const STATIC_CACHE = `${CACHE_PREFIX}-static-v2`;
 const OFFLINE_CACHE = `${CACHE_PREFIX}-offline-v1`;
 const OFFLINE_URL = "/offline";
 
@@ -80,16 +82,23 @@ self.addEventListener("fetch", (event) => {
 
   if (!isStaticAsset) return;
 
+  // Next.js chunk names may remain stable during a dev-server session. A
+  // cache-first response can then combine fresh server HTML with stale React
+  // code and cause a hydration mismatch. Prefer a fresh asset and retain the
+  // cached version only as an offline fallback.
   event.respondWith(
-    caches.open(STATIC_CACHE).then(async (cache) => {
-      const cached = await cache.match(request);
-      if (cached) return cached;
-
-      const response = await fetch(request);
-      if (response.ok && response.type === "basic") {
-        cache.put(request, response.clone()).catch(() => {});
-      }
-      return response;
-    })
+    fetch(request)
+      .then((response) => {
+        if (response.ok && response.type === "basic") {
+          caches.open(STATIC_CACHE)
+            .then((cache) => cache.put(request, response.clone()))
+            .catch(() => {});
+        }
+        return response;
+      })
+      .catch(async () => {
+        const cache = await caches.open(STATIC_CACHE);
+        return (await cache.match(request)) || Response.error();
+      })
   );
 });

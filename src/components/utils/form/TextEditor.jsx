@@ -18,6 +18,9 @@ export default function TextEditor({
   const editorRef = useRef(null);
   const quillRef = useRef(null);
   const onChangeRef = useRef(onChange);
+  // Last HTML this editor itself reported to the parent. A `value` equal to this
+  // is just our own typing echoing back and must never be written into Quill.
+  const lastEmittedRef = useRef(null);
 
   const [error, setError] = useState("");
   const [charCount, setCharCount] = useState(0);
@@ -33,6 +36,15 @@ export default function TextEditor({
       .getText()
       .replace(/\u00a0/g, " ")
       .trim();
+  };
+
+  // Quill's clipboard.dangerouslyPasteHTML() calls setSelection(0) internally,
+  // which FOCUSES the editor it is called on. ResumeBuilder mounts every tab twice
+  // (mobile + desktop copies), so syncing the hidden copy used to steal focus from
+  // the one being typed in. This sets content silently, with no focus/selection change.
+  const setHtmlSilently = (quill, html) => {
+    const delta = quill.clipboard.convert({ html: html || "" });
+    quill.setContents(delta, "silent");
   };
 
   const validate = () => {
@@ -105,12 +117,8 @@ export default function TextEditor({
       quillRef.current = quill;
 
       if (value) {
-        quill.clipboard.dangerouslyPasteHTML(value);
+        setHtmlSilently(quill, value);
         setCharCount(quill.getLength() - 1);
-        // Ensure iPad virtual keyboard is NOT invoked on mount
-        if (quill.root && typeof quill.root.blur === "function") {
-          quill.root.blur();
-        }
       }
 
       const handleTextChange = (delta, oldDelta, source) => {
@@ -131,6 +139,7 @@ export default function TextEditor({
         const normalizedValue =
           html === "<p><br></p>" || html === "<p></p>" ? "" : html;
 
+        lastEmittedRef.current = normalizedValue;
         onChangeRef.current?.(normalizedValue);
 
         if (isRequired && text) {
@@ -178,6 +187,14 @@ export default function TextEditor({
 
     if (!quill) return;
 
+    // Our own typing echoing back through the parent: nothing to sync.
+    if ((value || "") === (lastEmittedRef.current ?? null)) return;
+
+    // The user is typing in this editor right now. Its content is the source of
+    // truth; a late/stale `value` from a parent re-render must not overwrite it
+    // (that is what dropped characters / reset the caret).
+    if (quill.hasFocus()) return;
+
     const currentHTML = quill.root.innerHTML;
 
     const normalizedCurrent =
@@ -185,21 +202,10 @@ export default function TextEditor({
         ? ""
         : currentHTML;
 
-    if (value !== normalizedCurrent) {
-      // ONLY restore selection if the user is already interacting/focused
-      const hasFocus = quill.hasFocus();
-      const selection = hasFocus ? quill.getSelection() : null;
-
-      quill.clipboard.dangerouslyPasteHTML(value || "");
+    if ((value || "") !== normalizedCurrent) {
+      setHtmlSilently(quill, value);
       setCharCount(quill.getLength() - 1);
-
-      if (hasFocus && selection) {
-        try {
-          quill.setSelection(selection);
-        } catch {
-          // Ignore selection restoration errors.
-        }
-      }
+      lastEmittedRef.current = null;
     }
   }, [value]);
 

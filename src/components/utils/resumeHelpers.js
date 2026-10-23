@@ -38,8 +38,16 @@ export function sortByPriority(list) {
  * original placement when older drafts do not contain a priority yet.
  */
 export function getSectionOrder(data, sectionRoot, fallbackOrder = 999) {
+  // Profile Summary is fixed directly after the resume header.
+  if (sectionRoot === "profileSummary") return 1;
+
   const priority = Number(data?.[sectionRoot]?.priority);
-  return Number.isFinite(priority) && priority > 0 ? priority : fallbackOrder;
+  const baseOrder = Number.isFinite(priority) && priority > 0
+    ? priority
+    : fallbackOrder;
+
+  // Reserve order 1 so no saved section priority can outrank the summary.
+  return baseOrder + 1;
 }
 
 export function formatDate(dateString) {

@@ -51,6 +51,34 @@ export function SortableList({ items, onReorder, children }) {
   );
 }
 
+const INTERACTIVE_SELECTOR =
+  'input, textarea, select, button, a, [contenteditable=""], [contenteditable="true"], .ql-editor, .ql-toolbar';
+
+/**
+ * dnd-kit's KeyboardSensor calls preventDefault() on Space/Enter from ANY child
+ * (no activator node is set), which blocks typing spaces/new lines in inputs and
+ * the Quill editor. Drop drag activation for events coming from interactive/editable
+ * elements so they behave normally.
+ */
+function guardListeners(listeners = {}) {
+  const guarded = {};
+  Object.keys(listeners).forEach((eventName) => {
+    const handler = listeners[eventName];
+    guarded[eventName] = (event) => {
+      const target = event?.target;
+      if (
+        target instanceof Element &&
+        target.closest(INTERACTIVE_SELECTOR) &&
+        target !== event.currentTarget
+      ) {
+        return;
+      }
+      handler?.(event);
+    };
+  });
+  return guarded;
+}
+
 /** A sortable wrapper; dragging the entry card gives live transforms/feedback. */
 export function SortableCard({ id, children }) {
   const {
@@ -74,7 +102,7 @@ export function SortableCard({ id, children }) {
         touchAction: "manipulation",
       }}
       {...attributes}
-      {...listeners}
+      {...guardListeners(listeners)}
     >
       {children}
     </div>
