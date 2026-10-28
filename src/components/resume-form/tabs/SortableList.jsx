@@ -66,7 +66,12 @@ function guardListeners(listeners = {}) {
     const handler = listeners[eventName];
     guarded[eventName] = (event) => {
       const target = event?.target;
+
+      // Keep pointer/touch activation available across the card. Only guard the
+      // keyboard activator when the key event originates inside an editor or
+      // other interactive control, so typing remains unaffected.
       if (
+        eventName === "onKeyDown" &&
         target instanceof Element &&
         target.closest(INTERACTIVE_SELECTOR) &&
         target !== event.currentTarget

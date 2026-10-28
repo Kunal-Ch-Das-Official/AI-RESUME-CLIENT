@@ -159,12 +159,11 @@ function hasSection(data, root) {
 function SectionHeading({
   title,
   theme,
-  dark = false,
-  templateName = "clean-ats-optimizer",
+  dark = false
 }) {
   return (
     <h2
-      className={`text-xs font-bold uppercase tracking-wider border-b pb-1 mb-3 ${templateName === "entry-level-graduate" || templateName === "clean-ats-optimizer" ? "mt-8" : ""} ${
+      className={`text-xs font-bold uppercase tracking-wider border-b pb-1 mb-3 ${
         dark
           ? "border-zinc-700 text-zinc-100"
           : "border-slate-300 text-slate-900"
@@ -225,12 +224,11 @@ export default function ResumeExtraSections({
     // Render Quill HTML so bold, italic, lists, and other formatting work.
     if (root === "profileSummary") {
       return (
-        <div key={root} className="mb-6" style={{ order }}>
+        <div key={root} className="mb-4" style={{ order }}>
           <SectionHeading
             title={title}
             theme={theme}
             dark={dark}
-            templateName={data.templateName}
           />
 
           {section.subject && (
@@ -255,7 +253,7 @@ export default function ResumeExtraSections({
       const companies = sortByPriority(toArray(section.companies));
 
       return (
-        <div key={root} className="mb-6" style={{ order }}>
+        <div key={root} className="mb-4" style={{ order }}>
           <SectionHeading title={title} theme={theme} dark={dark} />
 
           {companies.map((company, index) => (
@@ -290,7 +288,7 @@ export default function ResumeExtraSections({
                     </div>
                   )}
 
-                  <span>|</span>
+                  {company.jobTypes && <span>|</span>}
 
                   {company.jobTypes && (
                     <div className="custom-addition-child">
@@ -305,15 +303,31 @@ export default function ResumeExtraSections({
 
               {company.responsibility &&
                 (Array.isArray(company.responsibility) ? (
-                  <ul
-                    className={`mt-1 list-disc list-inside space-y-0.5 ${text}`}
-                  >
-                    {company.responsibility
-                      .filter(Boolean)
-                      .map((item, itemIndex) => (
-                        <li key={itemIndex}>{item}</li>
-                      ))}
-                  </ul>
+                  // The Experience editor stores manual rich text as [html],
+                  // while AI suggestions are stored as an array of plain lines.
+                  // Render the former as HTML instead of exposing its tags as text.
+                  company.responsibility.length === 1 &&
+                  typeof company.responsibility[0] === "string" &&
+                  /<\/?(?:p|div|ul|ol|li|br|strong|b|em|i|u|s|span|h[1-6]|a)\b/i.test(
+                    company.responsibility[0],
+                  ) ? (
+                    <div
+                      className={`ql-editor clean-editor mt-1 ${text}`}
+                      dangerouslySetInnerHTML={{
+                        __html: sanitizeRichText(company.responsibility[0]),
+                      }}
+                    />
+                  ) : (
+                    <ul
+                      className={`mt-1 list-disc list-inside space-y-0.5 ${text}`}
+                    >
+                      {company.responsibility
+                        .filter(Boolean)
+                        .map((item, itemIndex) => (
+                          <li key={itemIndex}>{item}</li>
+                        ))}
+                    </ul>
+                  )
                 ) : (
                   <div
                     className={`ql-editor clean-editor mt-1 ${text}`}
@@ -333,7 +347,7 @@ export default function ResumeExtraSections({
       const projects = sortByPriority(toArray(section.projects));
 
       return (
-        <div key={root} className="mb-6" style={{ order }}>
+        <div key={root} className="mb-4" style={{ order }}>
           <SectionHeading title={title} theme={theme} dark={dark} />
 
           {projects.map((project, index) => (
@@ -397,7 +411,7 @@ export default function ResumeExtraSections({
       const qualifications = sortByPriority(toArray(section.qualifications));
 
       return (
-        <div key={root} className="mb-6" style={{ order }}>
+        <div key={root} className="mb-4" style={{ order }}>
           <SectionHeading title={title} theme={theme} dark={dark} />
 
           {qualifications.map((qualification, index) => (
@@ -431,7 +445,7 @@ export default function ResumeExtraSections({
       const certificates = sortByPriority(toArray(section.certificates));
 
       return (
-        <div key={root} className="mb-6" style={{ order }}>
+        <div key={root} className="mb-4" style={{ order }}>
           <SectionHeading title={title} theme={theme} dark={dark} />
 
           {certificates.map((certificate, index) => (
@@ -482,7 +496,7 @@ export default function ResumeExtraSections({
     // Skills
     if (root === "skills") {
       return (
-        <div key={root} className="mb-6" style={{ order }}>
+        <div key={root} className="mb-4" style={{ order }}>
           <SectionHeading title={title} theme={theme} dark={dark} />
 
           <div className="space-y-1 text-xs">
@@ -504,7 +518,7 @@ export default function ResumeExtraSections({
       return (
         <div
           key={root}
-          className={`mb-6 ${
+          className={`mb-4 ${
             data?.templateName === "clean-ats-optimizer" ? "mt-4" : ""
           }`}
           style={{ order }}
@@ -555,7 +569,7 @@ export default function ResumeExtraSections({
       const achievements = sortByPriority(section.achievements || []);
 
       return (
-        <div key={root} className="mb-6" style={{ order }}>
+        <div key={root} className="mb-4" style={{ order }}>
           <SectionHeading title={title} theme={theme} dark={dark} />
 
           <div className="space-y-3 text-xs">
@@ -610,7 +624,7 @@ export default function ResumeExtraSections({
       const contributions = sortByPriority(toArray(section.contributions));
 
       return (
-        <div key={root} className="mb-6" style={{ order }}>
+        <div key={root} className="mb-4" style={{ order }}>
           <SectionHeading title={title} theme={theme} dark={dark} />
 
           {contributions.map((contribution, index) => (
@@ -653,7 +667,7 @@ export default function ResumeExtraSections({
     // Languages
     if (root === "languageProficiency") {
       return (
-        <div key={root} className="mb-6" style={{ order }}>
+        <div key={root} className="mb-4" style={{ order }}>
           <SectionHeading title={title} theme={theme} dark={dark} />
 
           <div className="grid gap-1 text-xs sm:grid-cols-2">
@@ -674,7 +688,7 @@ export default function ResumeExtraSections({
     );
 
     return (
-      <div key={root} className="mb-6" style={{ order }}>
+      <div key={root} className="mb-4" style={{ order }}>
         <SectionHeading title={title} theme={theme} dark={dark} />
 
         <div className="grid gap-2 text-xs sm:grid-cols-2">
@@ -694,7 +708,7 @@ export default function ResumeExtraSections({
       {sections.map(renderSection)}
 
       {customAttributes.length > 0 && (
-        <div className="mb-6" style={{ order: 999 }}>
+        <div className="mb-4" style={{ order: 999 }}>
           <SectionHeading
             title="Additional Information"
             theme={theme}

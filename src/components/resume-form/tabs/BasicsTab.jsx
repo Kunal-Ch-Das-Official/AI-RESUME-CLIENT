@@ -713,7 +713,7 @@ export default function BasicsTab({ resume, update, setPendingFiles }) {
             value={resume.address?.streetName}
             onChange={(value) => update("address.streetName", value)}
             placeholder="Netaji Subhash Chandra Bose Road"
-            isRequired={true}
+            isRequired={false}
           />
 
           <Field
@@ -739,6 +739,7 @@ export default function BasicsTab({ resume, update, setPendingFiles }) {
             value={resume.address?.pincode}
             onChange={(value) => update("address.pincode", value)}
             placeholder="711011"
+            isRequired={true}
           />
 
           <Field

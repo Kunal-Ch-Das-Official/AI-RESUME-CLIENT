@@ -1,5 +1,5 @@
 // components/builder/controls/FormControls.jsx
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { IconChevronDown, IconChevronUp } from "@tabler/icons-react";
 
 export const inputClass =
@@ -7,6 +7,93 @@ export const inputClass =
 
 export const labelClass =
   "mb-1 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500";
+
+const monthOptions = [
+  ["01", "January"],
+  ["02", "February"],
+  ["03", "March"],
+  ["04", "April"],
+  ["05", "May"],
+  ["06", "June"],
+  ["07", "July"],
+  ["08", "August"],
+  ["09", "September"],
+  ["10", "October"],
+  ["11", "November"],
+  ["12", "December"],
+];
+
+const currentYear = new Date().getFullYear();
+const yearOptions = Array.from(
+  { length: 121 },
+  (_, index) => currentYear + 20 - index,
+);
+
+function MonthYearField({ value, onChange, isRequired, style = {} }) {
+  const normalizedValue = typeof value === "string" ? value : "";
+  const match = /^(\d{4})-(\d{2})$/.exec(normalizedValue);
+  const [year, setYear] = useState(match?.[1] ?? "");
+  const [month, setMonth] = useState(match?.[2] ?? "");
+
+  // Keep the visible controls synchronized if the parent changes or resets the value.
+  useEffect(() => {
+    const nextMatch = /^(\d{4})-(\d{2})$/.exec(normalizedValue);
+    setYear(nextMatch?.[1] ?? "");
+    setMonth(nextMatch?.[2] ?? "");
+  }, [normalizedValue]);
+
+  const updatePart = (part, nextValue) => {
+    const nextYear = part === "year" ? nextValue : year;
+    const nextMonth = part === "month" ? nextValue : month;
+    if (part === "year") setYear(nextValue);
+    else setMonth(nextValue);
+
+    // The form's existing data model expects a complete YYYY-MM value.
+    onChange(nextYear && nextMonth ? `${nextYear}-${nextMonth}` : "");
+  };
+
+  const selectClass = `${inputClass} h-[38px] px-3 py-2`;
+  const selectStyle = {
+    minWidth: 0,
+    boxSizing: "border-box",
+    ...style,
+  };
+
+  return (
+    <div className="grid grid-cols-2 gap-2" style={{ width: "100%", minWidth: 0 }}>
+      <select
+        aria-label="Month"
+        className={selectClass}
+        value={month}
+        onChange={(event) => updatePart("month", event.target.value)}
+        required={isRequired}
+        style={selectStyle}
+      >
+        <option value="">Month</option>
+        {monthOptions.map(([monthValue, monthLabel]) => (
+          <option key={monthValue} value={monthValue}>
+            {monthLabel}
+          </option>
+        ))}
+      </select>
+      <select
+        aria-label="Year"
+        className={selectClass}
+        value={year}
+        onChange={(event) => updatePart("year", event.target.value)}
+        required={isRequired}
+        style={selectStyle}
+      >
+        <option value="">Year</option>
+        {yearOptions.map((yearValue) => (
+          <option key={yearValue} value={String(yearValue)}>
+            {yearValue}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
 
 export function Field({
   label,
@@ -20,7 +107,7 @@ export function Field({
   containerStyle = {},
   containerClassName = "",
 }) {
-  const isDatePicker = type === "month" || type === "date";
+  const isMonthPicker = type === "month";
 
   return (
     <label
@@ -43,30 +130,35 @@ export function Field({
           )}
         </span>
       </span>
-      <input
-        className={inputClass}
-        type={type}
-        value={value ?? ""}
-        placeholder={placeholder}
-        onChange={(e) => onChange(e.target.value)}
-        required={isRequired}
-        style={{
-          width: "100%",
-          minWidth: 0,
-          maxWidth: "100%",
-          boxSizing: "border-box",
-          /* Explicit minHeight and padding ensure consistent height and internal spacing */
-          height: "38px",
-          minHeight: "38px",
-          padding: "8px 12px",
-          lineHeight: "20px",
-          display: "block",
-          WebkitAppearance: isDatePicker ? "none" : undefined,
-          MozAppearance: isDatePicker ? "none" : undefined,
-          appearance: isDatePicker ? "none" : undefined,
-          ...style,
-        }}
-      />
+      {isMonthPicker ? (
+        <MonthYearField
+          value={value}
+          onChange={onChange}
+          isRequired={isRequired}
+          style={style}
+        />
+      ) : (
+        <input
+          className={inputClass}
+          type={type}
+          value={value ?? ""}
+          placeholder={placeholder}
+          onChange={(event) => onChange(event.target.value)}
+          required={isRequired}
+          style={{
+            width: "100%",
+            minWidth: 0,
+            maxWidth: "100%",
+            boxSizing: "border-box",
+            height: "38px",
+            minHeight: "38px",
+            padding: "8px 12px",
+            lineHeight: "20px",
+            display: "block",
+            ...style,
+          }}
+        />
+      )}
     </label>
   );
 }
